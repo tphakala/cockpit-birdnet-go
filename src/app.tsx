@@ -876,7 +876,7 @@ export const Application = () => {
 
     return (
         <Page className="no-masthead-sidebar">
-            <PageSection hasBodyWrapper={false}>
+            <PageSection hasBodyWrapper={false} className="ct-pagesection-mobile">
                 <Grid hasGutter>
             <GridItem span={12}>
                 <Card>

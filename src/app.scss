@@ -44,6 +44,39 @@ p {
     }
 }
 
+// Fix for maintaining consistent padding and border-radius at all breakpoints
+// The ct-pagesection-mobile class helps maintain proper spacing on mobile
+// This matches cockpit-podman's responsive behavior
+.ct-pagesection-mobile {
+    // Maintain consistent padding across all viewport sizes
+    // Below 1008px, PatternFly removes padding, but we want to keep it
+    padding-inline-start: var(--pf-t--global--spacer--lg);
+    padding-inline-end: var(--pf-t--global--spacer--lg);
+    
+    // On very small screens, reduce padding
+    @media screen and (max-width: 428px) {
+        padding-inline-start: var(--pf-t--global--spacer--md);
+        padding-inline-end: var(--pf-t--global--spacer--md);
+    }
+}
+
+// Fix page main container to maintain rounded corners and proper margins
+// at all breakpoints (addressing the 1008px issue)
+.no-masthead-sidebar {
+    .pf-v6-c-page__main-container {
+        // Ensure border-radius and margins are maintained at all viewport sizes
+        border-radius: var(--pf-t--global--border--radius--medium) !important;
+        margin-inline-start: var(--pf-t--global--spacer--lg);
+        margin-inline-end: var(--pf-t--global--spacer--lg);
+        
+        // At larger breakpoints, increase the margins slightly
+        @media screen and (min-width: 75rem) {
+            margin-inline-start: var(--pf-t--global--spacer--xl);
+            margin-inline-end: var(--pf-t--global--spacer--xl);
+        }
+    }
+}
+
 // Responsive utility classes for custom styles that don't have PatternFly equivalents
 .u-max-height-400px {
     max-height: 400px;
