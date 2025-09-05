@@ -875,8 +875,8 @@ export const Application = () => {
 
 
     return (
-        <Page>
-            <PageSection>
+        <Page className="no-masthead-sidebar">
+            <PageSection hasBodyWrapper={false}>
                 <Grid hasGutter>
             <GridItem span={12}>
                 <Card>
@@ -1014,7 +1014,7 @@ export const Application = () => {
                 </Card>
             </GridItem>
 
-            <GridItem sm={12} md={6} lg={4}>
+            <GridItem xl={4} lg={6} md={12}>
                 <Card>
                     <CardTitle>Docker Status</CardTitle>
                     <CardBody>
@@ -1029,7 +1029,7 @@ export const Application = () => {
                 </Card>
             </GridItem>
 
-            <GridItem sm={12} md={6} lg={4}>
+            <GridItem xl={4} lg={6} md={12}>
                 <Card>
                     <CardTitle>BirdNET-Go Status</CardTitle>
                     <CardBody>
@@ -1037,12 +1037,7 @@ export const Application = () => {
                             variant={getContainerStatusVariant()}
                             title={getContainerStatusText()}
                         />
-                        <div style={{ 
-                            display: 'grid', 
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '0.5rem 2rem',
-                            marginTop: '1rem'
-                        }}>
+                        <div className="pf-v6-u-display-grid u-grid-template-columns-1fr-1fr pf-v6-u-gap-md pf-v6-u-mt-md">
                             {/* Left Column */}
                             <div>
                                 {systemdStatus.exists && (
@@ -1109,7 +1104,7 @@ export const Application = () => {
                 </Card>
             </GridItem>
 
-            <GridItem sm={12} md={6} lg={4}>
+            <GridItem xl={4} lg={12} md={12}>
                 <Card>
                     <CardTitle>Version Management</CardTitle>
                     <CardBody>
@@ -1210,7 +1205,7 @@ export const Application = () => {
                                     />
                                 )}
                                 
-                                <Flex style={{ marginTop: '1rem', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <Flex className="pf-v6-u-mt-md pf-v6-u-gap-sm pf-v6-u-flex-wrap pf-v6-u-align-items-center">
                                     <Button
                                         variant="secondary"
                                         onClick={checkForUpdates}
@@ -1268,16 +1263,7 @@ export const Application = () => {
                         <CardTitle>Docker Container Logs</CardTitle>
                         <CardBody>
                             {containerLogs ? (
-                                <pre style={{ 
-                                    backgroundColor: '#f4f4f4', 
-                                    padding: '1rem', 
-                                    borderRadius: '4px',
-                                    maxHeight: '400px',
-                                    overflowY: 'auto',
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.875rem',
-                                    lineHeight: '1.5'
-                                }}>
+                                <pre className="pf-v6-u-background-color-200 pf-v6-u-p-md pf-v6-u-border-radius-sm u-max-height-400px pf-v6-u-overflow-y-auto pf-v6-u-font-family-monospace pf-v6-u-font-size-sm pf-v6-u-line-height-md">
                                     {containerLogs}
                                 </pre>
                             ) : (
@@ -1286,7 +1272,7 @@ export const Application = () => {
                                     title="No logs available" 
                                 />
                             )}
-                            <Flex style={{ marginTop: '1rem' }}>
+                            <Flex className="pf-v6-u-mt-md">
                                 <FlexItem>
                                     <Button 
                                         variant="secondary" 
@@ -1312,7 +1298,7 @@ export const Application = () => {
                     <Card>
                         <CardTitle>BirdNET-Go Application Logs</CardTitle>
                         <CardBody>
-                            <Flex style={{ marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                            <Flex className="pf-v6-u-mb-md pf-v6-u-gap-md pf-v6-u-flex-wrap">
                                 <FlexItem>
                                     <Select
                                         isOpen={logSelectOpen}
@@ -1397,16 +1383,7 @@ export const Application = () => {
                                 </FlexItem>
                             </Flex>
                             
-                            <div style={{ 
-                                backgroundColor: '#1e1e1e', 
-                                padding: '1rem', 
-                                borderRadius: '4px',
-                                maxHeight: '500px',
-                                overflowY: 'auto',
-                                fontFamily: 'monospace',
-                                fontSize: '0.875rem',
-                                lineHeight: '1.6'
-                            }}>
+                            <div className="pf-v6-u-background-color-dark-100 pf-v6-u-p-md pf-v6-u-border-radius-sm u-max-height-500px pf-v6-u-overflow-y-auto pf-v6-u-font-family-monospace pf-v6-u-font-size-sm pf-v6-u-line-height-lg">
                                 {filteredLogs.length > 0 ? (
                                     filteredLogs.map((log, index) => (
                                         <div key={index} style={{ 
@@ -1461,7 +1438,7 @@ export const Application = () => {
                                 )}
                             </div>
                             
-                            <Flex style={{ marginTop: '0.5rem' }}>
+                            <Flex className="pf-v6-u-mt-sm">
                                 <FlexItem>
                                     <small style={{ color: '#6a6e73' }}>
                                         Showing {filteredLogs.length} of {appLogs.length} log entries • Auto-refreshing every 3 seconds

@@ -12,3 +12,51 @@
 p {
     font-weight: bold;
 }
+
+// Responsive grid improvements
+.pf-v6-l-grid {
+    // Better spacing on smaller screens
+    @media (max-width: 75rem) {
+        --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--md);
+    }
+    
+    // Larger spacing on bigger screens
+    @media (min-width: 75rem) {
+        --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--lg);
+    }
+}
+
+
+// Responsive card improvements  
+.pf-v6-c-card {
+    // Ensure cards have proper minimum height on larger screens
+    @media (min-width: 75rem) {
+        min-height: 200px;
+    }
+    
+    // Better spacing for card content
+    .pf-v6-c-card__body {
+        padding: var(--pf-t--global--spacer--md);
+        
+        @media (min-width: 75rem) {
+            padding: var(--pf-t--global--spacer--lg);
+        }
+    }
+}
+
+// Responsive utility classes for custom styles that don't have PatternFly equivalents
+.u-max-height-400px {
+    max-height: 400px;
+}
+
+.u-max-height-500px {
+    max-height: 500px;
+}
+
+.u-grid-template-columns-1fr-1fr {
+    grid-template-columns: 1fr 1fr;
+    
+    @media (max-width: 48rem) {
+        grid-template-columns: 1fr;
+    }
+}
