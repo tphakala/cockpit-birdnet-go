@@ -13,9 +13,9 @@ export DEB_BUILD_OPTIONS=nocheck
 override_dh_auto_configure:
 	# Install Node.js dependencies - use install if no lock file exists
 	if [ -f package-lock.json ]; then \
-		npm ci --production=false --ignore-scripts; \
+		npm ci --production=false --ignore-scripts --legacy-peer-deps; \
 	else \
-		npm install --production=false --ignore-scripts; \
+		npm install --production=false --ignore-scripts --legacy-peer-deps; \
 	fi
 
 override_dh_auto_build:
