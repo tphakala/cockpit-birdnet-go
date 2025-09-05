@@ -1,0 +1,261 @@
+name: Submit to Open Build Service
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.1)'
+        required: false
+        type: string
+
+jobs:
+  submit-to-obs:
+    runs-on: ubuntu-latest
+    # Only run if OBS secrets are configured
+    if: ${{ vars.OBS_ENABLED == 'true' }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Determine version
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          VERSION=${GITHUB_REF_NAME#v}  # Remove 'v' prefix from tag
+        elif [ -n "${{ inputs.version }}" ]; then
+          VERSION="${{ inputs.version }}"
+        else
+          VERSION="$(git describe --tags --abbrev=0 | sed 's/^v//')"
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Building version: $VERSION"
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies and build
+      run: |
+        npm ci --legacy-peer-deps
+        npm run build
+        
+    - name: Create distribution package
+      run: |
+        # Create distribution directory with built files
+        mkdir -p cockpit-birdnet-go-${{ env.VERSION }}
+        cp -r dist/* cockpit-birdnet-go-${{ env.VERSION }}/
+        cp manifest.json cockpit-birdnet-go-${{ env.VERSION }}/
+        
+        # Create source tarball
+        tar czf cockpit-birdnet-go-${{ env.VERSION }}.tar.gz cockpit-birdnet-go-${{ env.VERSION }}/
+        
+        # Create orig tarball for Debian
+        cp cockpit-birdnet-go-${{ env.VERSION }}.tar.gz cockpit-birdnet-go_${{ env.VERSION }}.orig.tar.gz
+        
+    - name: Install osc (OBS CLI)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y osc
+        
+    - name: Configure osc securely
+      run: |
+        # Create osc config directory
+        mkdir -p ~/.config/osc
+        
+        # Write configuration (credentials from secrets)
+        cat > ~/.config/osc/oscrc << 'EOF'
+        [general]
+        apiurl = https://api.opensuse.org
+        
+        [https://api.opensuse.org]
+        user = ${{ secrets.OBS_USERNAME }}
+        pass = ${{ secrets.OBS_PASSWORD }}
+        credentials_mgr_class = osc.credentials.PlaintextConfigFileCredentialsManager
+        EOF
+        
+        # Secure the config file
+        chmod 600 ~/.config/osc/oscrc
+        
+    - name: Create RPM spec file
+      run: |
+        cat > cockpit-birdnet-go.spec << 'EOF'
+        Name:           cockpit-birdnet-go
+        Version:        ${{ env.VERSION }}
+        Release:        1%{?dist}
+        Summary:        Cockpit plugin for BirdNET-Go service management
+        License:        MIT
+        URL:            https://github.com/tphakala/cockpit-birdnet-go
+        Source0:        %{name}-%{version}.tar.gz
+        
+        BuildArch:      noarch
+        Requires:       cockpit >= 215
+        
+        %description
+        A Cockpit plugin that provides a web interface for managing
+        BirdNET-Go bird sound identification service. It allows users to
+        control the service, view logs, and manage updates through
+        Cockpit's web interface.
+        
+        %prep
+        %setup -q
+        
+        %build
+        # Already built in tarball
+        
+        %install
+        mkdir -p %{buildroot}%{_datadir}/cockpit/birdnet-go
+        cp -a * %{buildroot}%{_datadir}/cockpit/birdnet-go/
+        
+        %files
+        %{_datadir}/cockpit/birdnet-go
+        
+        %changelog
+        * $(date '+%a %b %d %Y') GitHub Actions <noreply@github.com> - %{version}-1
+        - Automated build from GitHub release %{version}
+        EOF
+        
+    - name: Create Debian packaging files
+      run: |
+        mkdir -p debian/source
+        
+        # debian/control
+        cat > debian/control << 'EOF'
+        Source: cockpit-birdnet-go
+        Section: admin
+        Priority: optional
+        Maintainer: GitHub Actions <noreply@github.com>
+        Build-Depends: debhelper-compat (= 13)
+        Standards-Version: 4.6.2
+        Homepage: https://github.com/tphakala/cockpit-birdnet-go
+        Rules-Requires-Root: no
+        
+        Package: cockpit-birdnet-go
+        Architecture: all
+        Depends: ${misc:Depends}, cockpit (>= 215)
+        Description: Cockpit plugin for BirdNET-Go service management
+         A Cockpit plugin that provides a web interface for managing
+         BirdNET-Go bird sound identification service. It allows users to
+         control the service, view logs, and manage updates through
+         Cockpit's web interface.
+        EOF
+        
+        # debian/changelog
+        cat > debian/changelog << EOF
+        cockpit-birdnet-go (${{ env.VERSION }}-1) unstable; urgency=medium
+        
+          * Release version ${{ env.VERSION }}
+          * See https://github.com/tphakala/cockpit-birdnet-go/releases/tag/v${{ env.VERSION }}
+        
+         -- GitHub Actions <noreply@github.com>  $(date -R)
+        EOF
+        
+        # debian/rules
+        cat > debian/rules << 'EOF'
+        #!/usr/bin/make -f
+        
+        %:
+        	dh $@
+        
+        override_dh_auto_build:
+        	# Already built
+        
+        override_dh_auto_install:
+        	mkdir -p debian/cockpit-birdnet-go/usr/share/cockpit/birdnet-go
+        	cp -a dist/* debian/cockpit-birdnet-go/usr/share/cockpit/birdnet-go/
+        	cp manifest.json debian/cockpit-birdnet-go/usr/share/cockpit/birdnet-go/
+        
+        override_dh_auto_test:
+        	# No tests needed for pre-built package
+        EOF
+        chmod +x debian/rules
+        
+        # debian/compat
+        echo "13" > debian/compat
+        
+        # debian/source/format
+        echo "3.0 (quilt)" > debian/source/format
+        
+        # Create debian source package
+        tar czf debian.tar.gz debian/
+        
+    - name: Create OBS _service file
+      run: |
+        # This service file allows OBS to fetch sources
+        cat > _service << 'EOF'
+        <services>
+          <service name="download_url">
+            <param name="protocol">https</param>
+            <param name="host">github.com</param>
+            <param name="path">/tphakala/cockpit-birdnet-go/releases/download/v${{ env.VERSION }}/cockpit-birdnet-go-${{ env.VERSION }}.tar.gz</param>
+            <param name="filename">cockpit-birdnet-go-${{ env.VERSION }}.tar.gz</param>
+          </service>
+          
+          <service name="set_version">
+            <param name="version">${{ env.VERSION }}</param>
+          </service>
+        </services>
+        EOF
+        
+    - name: Prepare OBS submission
+      run: |
+        # Set OBS project path from secret or default
+        OBS_PROJECT="${{ secrets.OBS_PROJECT || format('home:{0}', secrets.OBS_USERNAME) }}"
+        echo "OBS_PROJECT=$OBS_PROJECT" >> $GITHUB_ENV
+        
+        # Check if package exists, create if needed
+        if ! osc meta pkg "$OBS_PROJECT" cockpit-birdnet-go &>/dev/null; then
+          echo "Creating new package in OBS..."
+          cat > meta.xml << EOF
+        <package name="cockpit-birdnet-go" project="$OBS_PROJECT">
+          <title>Cockpit BirdNET-Go Plugin</title>
+          <description>A Cockpit plugin for managing BirdNET-Go service</description>
+          <url>https://github.com/tphakala/cockpit-birdnet-go</url>
+        </package>
+        EOF
+          osc meta pkg -F meta.xml "$OBS_PROJECT" cockpit-birdnet-go
+        fi
+        
+    - name: Checkout OBS package
+      run: |
+        osc checkout "${{ env.OBS_PROJECT }}" cockpit-birdnet-go
+        cd "${{ env.OBS_PROJECT }}/cockpit-birdnet-go"
+        
+    - name: Update OBS package
+      run: |
+        cd "${{ env.OBS_PROJECT }}/cockpit-birdnet-go"
+        
+        # Remove old files
+        rm -f *.spec *.tar.gz *.dsc *.debian.tar.* _service
+        
+        # Copy new files
+        cp ../../cockpit-birdnet-go.spec .
+        cp ../../cockpit-birdnet-go-${{ env.VERSION }}.tar.gz .
+        cp ../../cockpit-birdnet-go_${{ env.VERSION }}.orig.tar.gz .
+        cp ../../debian.tar.gz .
+        cp ../../_service .
+        
+        # Add files to OBS
+        osc addremove
+        
+        # Show what will be committed
+        osc diff
+        
+        # Commit to OBS
+        osc commit -m "Update to version ${{ env.VERSION }} from GitHub release"
+        
+    - name: Trigger OBS builds
+      run: |
+        echo "Triggering builds for all configured repositories..."
+        osc rebuildpac "${{ env.OBS_PROJECT }}" cockpit-birdnet-go
+        
+    - name: Check build status
+      run: |
+        echo "Checking initial build status..."
+        sleep 10  # Give OBS a moment to start builds
+        osc results "${{ env.OBS_PROJECT }}" cockpit-birdnet-go
+        echo ""
+        echo "Builds have been triggered. Check OBS web interface for detailed status:"
+        echo "https://build.opensuse.org/package/show/${{ env.OBS_PROJECT }}/cockpit-birdnet-go"
