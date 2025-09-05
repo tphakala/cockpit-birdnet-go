@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+export NODE_ENV=production
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+# Skip tests during build as they require network access and VM images
+export DEB_BUILD_OPTIONS=nocheck
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	# Install Node.js dependencies
+	npm ci --production=false --ignore-scripts
+
+override_dh_auto_build:
+	# Build the Cockpit module
+	$(MAKE) all
+
+override_dh_auto_clean:
+	dh_auto_clean
+	# Clean up build artifacts
+	rm -rf node_modules dist
+	rm -f package-lock.json
+
+override_dh_auto_install:
+	# Install to debian package directory
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/cockpit-birdnet-go PREFIX=/usr
+
+override_dh_auto_test:
+	# Skip tests as they require special test environment
+
+override_dh_builddeb:
+	dh_builddeb -- -Zxz

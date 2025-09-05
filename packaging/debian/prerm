@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "remove" ]; then
+    # Reload cockpit to remove the module from the interface
+    if systemctl is-active --quiet cockpit.service; then
+        systemctl reload cockpit || true
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0

@@ -198,4 +198,28 @@ $(NODE_MODULES_TEST): package.json
 	env -u NODE_ENV npm install --ignore-scripts
 	env -u NODE_ENV npm prune
 
-.PHONY: all clean install devel-install devel-uninstall print-version dist node-cache rpm prepare-check check vm print-vm
+# Debian package targets
+deb-prepare: $(TARFILE)
+	# Extract tarball and copy debian packaging
+	tar -xf $(TARFILE)
+	cd $(RPM_NAME)-$(VERSION) && cp -r ../packaging/debian ./
+	# Process changelog template
+	cd $(RPM_NAME)-$(VERSION) && sed 's/%{VERSION}/$(VERSION)-1/g' debian/changelog > debian/changelog.tmp && mv debian/changelog.tmp debian/changelog
+
+deb: deb-prepare
+	# Build Debian package
+	cd $(RPM_NAME)-$(VERSION) && dpkg-buildpackage -us -uc -b
+	# Move the built package to current directory
+	mv cockpit-*.deb . || true
+	# Clean up
+	rm -rf $(RPM_NAME)-$(VERSION)
+
+deb-source: deb-prepare
+	# Build source package
+	cd $(RPM_NAME)-$(VERSION) && dpkg-buildpackage -us -uc -S
+	# Move source files to current directory
+	mv cockpit-*.dsc cockpit-*.tar.* . || true
+	# Clean up
+	rm -rf $(RPM_NAME)-$(VERSION)
+
+.PHONY: all clean install devel-install devel-uninstall print-version dist node-cache rpm deb deb-prepare deb-source prepare-check check vm print-vm

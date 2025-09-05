@@ -1,0 +1,35 @@
+Source: cockpit-birdnet-go
+Section: admin
+Priority: optional
+Maintainer: Tomi Hakala <tomi.hakala@pobox.fi>
+Build-Depends: debhelper (>= 10),
+               nodejs (>= 16),
+               npm,
+               make,
+               gettext,
+               libappstream-glib8
+Standards-Version: 4.5.1
+Homepage: https://github.com/tphakala/cockpit-birdnet-go
+Vcs-Git: https://github.com/tphakala/cockpit-birdnet-go.git
+Vcs-Browser: https://github.com/tphakala/cockpit-birdnet-go
+
+Package: cockpit-birdnet-go
+Architecture: all
+Depends: ${misc:Depends},
+         cockpit-bridge (>= 196),
+         cockpit-ws (>= 196)
+Recommends: docker.io | docker-ce
+Suggests: systemd
+Description: Cockpit management interface for BirdNET-Go
+ A Cockpit management interface for BirdNET-Go, an AI-powered
+ bird song identification system. This package provides Docker
+ container management, monitoring, and configuration capabilities
+ through the Cockpit web interface.
+ .
+ Features include:
+  * Docker container lifecycle management
+  * Real-time health monitoring
+  * Application log viewing
+  * Automatic update checking
+  * systemd service integration
+  * Multi-architecture support (amd64/arm64)

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+# Automatically restart cockpit after package installation
+if [ "$1" = "configure" ]; then
+    # Reload cockpit to pick up the new module
+    if systemctl is-active --quiet cockpit.service; then
+        systemctl reload cockpit || true
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0
