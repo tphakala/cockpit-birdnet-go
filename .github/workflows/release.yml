@@ -150,12 +150,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Set up QEMU for multi-arch
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Download source tarball
         uses: actions/download-artifact@v4
         with:
@@ -207,45 +201,32 @@ jobs:
             exit 1
           fi
 
-      - name: Build Debian package (arm64) in Docker
+      - name: Build Debian package (architecture-independent)
         run: |
           cd cockpit-birdnet-go-*/
           
-          # Create a Dockerfile for ARM64 build
-          cat > Dockerfile.arm64 << 'EOF'
-          FROM --platform=linux/arm64 ubuntu:22.04
-          
           # Install build dependencies
-          RUN apt-get update && apt-get install -y \
-              debhelper \
-              nodejs \
-              npm \
-              make \
-              gettext \
-              libappstream-glib8 \
-              dh-make \
-              devscripts \
-              build-essential \
-              && rm -rf /var/lib/apt/lists/*
-          
-          WORKDIR /build
-          COPY . .
+          sudo apt-get update
+          sudo apt-get install -y debhelper nodejs npm make gettext libappstream-glib8 dh-make devscripts build-essential
           
           # Set up environment
-          ENV DEBEMAIL="tphakala@users.noreply.github.com"
-          ENV DEBFULLNAME="Tomi Hakala"
+          export DEBEMAIL="tphakala@users.noreply.github.com"
+          export DEBFULLNAME="Tomi Hakala"
           
-          # Build the package
-          RUN dpkg-buildpackage -us -uc -b
-          EOF
+          echo "=== Building architecture-independent package (works on all architectures) ==="
+          # Since this is a JavaScript/web interface, it's architecture-independent
+          # The 'all' architecture means it works on any architecture including ARM64
+          dpkg-buildpackage -us -uc -b
           
-          # Build using Docker with ARM64 emulation
-          docker buildx build --platform linux/arm64 -f Dockerfile.arm64 -t cockpit-birdnet-go-builder-arm64 .
-          
-          # Extract the built package
-          docker run --rm --platform linux/arm64 -v "$(pwd)/..":/output cockpit-birdnet-go-builder-arm64 sh -c "cp /*.deb /output/"
+          echo "=== Built packages ==="
+          ls -la ../*.deb
 
-      - name: Upload Debian package (arm64)
+      - name: Copy built package for upload
+        run: |
+          cp cockpit-birdnet-go-*/*.deb . 2>/dev/null || cp *.deb . 2>/dev/null || echo "Package built in parent directory"
+          ls -la *.deb
+
+      - name: Upload Debian package (arm64-compatible)
         uses: actions/upload-artifact@v4
         with:
           name: debian-arm64
@@ -282,19 +263,17 @@ jobs:
             ### Source Distribution
             - `cockpit-birdnet-go-*.tar.xz` - Source tarball for building from source
             
-            ### Debian Packages
-            - `cockpit-birdnet-go_*_all.deb` - Debian package for amd64 (Intel/AMD processors)
-            - `cockpit-birdnet-go_*_all.deb` - Debian package for arm64 (Raspberry Pi 4/5, Apple Silicon)
+            ### Debian Package
+            - `cockpit-birdnet-go_*_all.deb` - Architecture-independent package (works on all architectures)
+            
+            This package works on all architectures including:
+            - Intel/AMD processors (x86_64/amd64)
+            - Raspberry Pi 4/5 (ARM64/aarch64)
+            - Other ARM processors
             
             ### Installation
             
-            **For Debian/Ubuntu (amd64):**
-            ```bash
-            wget https://github.com/tphakala/cockpit-birdnet-go/releases/download/${{ github.ref_name }}/cockpit-birdnet-go_*_all.deb
-            sudo apt install ./cockpit-birdnet-go_*_all.deb
-            ```
-            
-            **For Raspberry Pi (arm64):**
+            **For any Debian/Ubuntu system (Intel, AMD, Raspberry Pi, etc.):**
             ```bash
             wget https://github.com/tphakala/cockpit-birdnet-go/releases/download/${{ github.ref_name }}/cockpit-birdnet-go_*_all.deb
             sudo apt install ./cockpit-birdnet-go_*_all.deb
