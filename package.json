@@ -1,5 +1,5 @@
 {
-  "name": "cockpit-birdnet-go",
+  "name": "birdnet-go",
   "description": "Cockpit management interface for BirdNET-Go",
   "type": "module",
   "main": "index.js",
