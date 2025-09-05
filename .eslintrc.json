@@ -4,7 +4,7 @@
         "browser": true,
         "es6": true
     },
-    "extends": ["eslint:recommended", "standard", "standard-jsx", "standard-react"],
+    "extends": ["eslint:recommended", "standard", "standard-jsx", "standard-react", "prettier"],
     "parserOptions": {
         "ecmaVersion": "2022",
         "sourceType": "module"
@@ -52,7 +52,7 @@
       "plugins": [
         "@typescript-eslint"
       ],
-      "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+      "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
       "parser": "@typescript-eslint/parser",
       "parserOptions": {
         "project": ["./tsconfig.json"]

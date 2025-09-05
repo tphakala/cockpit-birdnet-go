@@ -1,4 +1,4 @@
-@use "page.scss";
+@use 'page.scss';
 
 // Remove shadows from all elements
 .pf-v6-c-card,
@@ -13,34 +13,65 @@ p {
     font-weight: bold;
 }
 
-// Responsive grid improvements
-.pf-v6-l-grid {
-    // Better spacing on smaller screens
-    @media (max-width: 75rem) {
-        --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--md);
-    }
-    
-    // Larger spacing on bigger screens
-    @media (min-width: 75rem) {
-        --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--lg);
+// Make h2 CardTitle use proper h2 font size
+// This applies to both plain cards and regular cards
+// When CardTitle has component="h2", the element itself is h2
+h2.pf-v6-c-card__title-text {
+    font-size: var(--pf-t--global--font--size--2xl);
+}
+
+// Override PatternFly card title spacing globally
+.pf-v6-c-card {
+    // Remove spacing after card titles when they're not the last child
+    --pf-v6-c-card__title--not--last-child--PaddingBlockEnd: 0;
+}
+
+// Reduce bottom margin on title text
+.pf-v6-c-card__title-text {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+// Add small margin below Alert elements for better spacing
+.pf-v6-c-alert {
+    margin-bottom: var(--pf-t--global--spacer--sm);
+}
+
+// For plain cards with headers, ensure proper heading hierarchy
+.pf-v6-c-card.pf-m-plain {
+    // Override PatternFly's card title spacing variables
+    --pf-v6-c-card__title--not--last-child--PaddingBlockEnd: 0;
+
+    .pf-v6-c-card__header {
+        // Remove header bottom padding
+        padding-bottom: 0;
+
+        h2 {
+            // The h2 inherits proper sizing from the rule above
+            // But we ensure it's not overridden by plain card styles
+            font-size: var(--pf-t--global--font--size--2xl);
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
     }
 }
 
+// Responsive grid improvements
+.pf-v6-l-grid {
+    // Use consistent grid gap at all viewport sizes
+    --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--lg);
 
-// Responsive card improvements  
-.pf-v6-c-card {
-    // Ensure cards have proper minimum height on larger screens
-    @media (min-width: 75rem) {
-        min-height: 200px;
+    // Only reduce on very small screens
+    @media (max-width: 428px) {
+        --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--md);
     }
-    
-    // Better spacing for card content
+}
+
+// Card improvements with consistent spacing
+.pf-v6-c-card {
+    // Use consistent padding for card content at all viewport sizes
     .pf-v6-c-card__body {
-        padding: var(--pf-t--global--spacer--md);
-        
-        @media (min-width: 75rem) {
-            padding: var(--pf-t--global--spacer--lg);
-        }
+        padding: var(--pf-t--global--spacer--lg);
     }
 }
 
@@ -52,7 +83,7 @@ p {
     // Below 1008px, PatternFly removes padding, but we want to keep it
     padding-inline-start: var(--pf-t--global--spacer--lg);
     padding-inline-end: var(--pf-t--global--spacer--lg);
-    
+
     // On very small screens, reduce padding
     @media screen and (max-width: 428px) {
         padding-inline-start: var(--pf-t--global--spacer--md);
@@ -66,14 +97,9 @@ p {
     .pf-v6-c-page__main-container {
         // Ensure border-radius and margins are maintained at all viewport sizes
         border-radius: var(--pf-t--global--border--radius--medium) !important;
+        // Use consistent margins at all viewport sizes to avoid sudden jumps
         margin-inline-start: var(--pf-t--global--spacer--lg);
         margin-inline-end: var(--pf-t--global--spacer--lg);
-        
-        // At larger breakpoints, increase the margins slightly
-        @media screen and (min-width: 75rem) {
-            margin-inline-start: var(--pf-t--global--spacer--xl);
-            margin-inline-end: var(--pf-t--global--spacer--xl);
-        }
     }
 }
 
@@ -86,9 +112,74 @@ p {
     max-height: 500px;
 }
 
+// Fix application logs readability - ensure dark background with proper contrast
+.application-logs-container {
+    background-color: #1e1e1e !important;
+    color: #e0e0e0;
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    word-wrap: break-word;
+
+    // Log timestamp styling
+    .log-timestamp {
+        color: #9ca3af;
+    }
+
+    // Log level styling
+    .log-level {
+        font-weight: bold;
+        min-width: 50px;
+    }
+
+    // Service name styling
+    .log-service {
+        color: #60a5fa;
+    }
+
+    // Log message styling
+    .log-message {
+        color: #f3f4f6;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    // Additional fields styling
+    .log-fields {
+        color: #9ca3af;
+        font-size: 0.8rem;
+
+        .log-field-key {
+            color: #60a5fa;
+        }
+    }
+
+    // Empty state styling
+    .log-empty {
+        color: #9ca3af;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    // Log entry border
+    .log-entry {
+        border-bottom: 1px solid #3c3c3c;
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.5rem;
+        color: #e0e0e0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    // Log stats text styling
+    .log-stats {
+        color: #9ca3af;
+    }
+}
+
 .u-grid-template-columns-1fr-1fr {
     grid-template-columns: 1fr 1fr;
-    
+
     @media (max-width: 48rem) {
         grid-template-columns: 1fr;
     }
