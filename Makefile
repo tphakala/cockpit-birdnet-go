@@ -196,7 +196,7 @@ $(NODE_MODULES_TEST): package.json
 	rm -f package-lock.json
 	# unset NODE_ENV, skips devDependencies otherwise
 	env -u NODE_ENV npm install --ignore-scripts --legacy-peer-deps
-	env -u NODE_ENV npm prune
+	env -u NODE_ENV npm prune --legacy-peer-deps
 
 # Debian package targets
 deb-prepare: $(TARFILE)
