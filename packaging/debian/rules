@@ -11,8 +11,12 @@ export DEB_BUILD_OPTIONS=nocheck
 	dh $@
 
 override_dh_auto_configure:
-	# Install Node.js dependencies
-	npm ci --production=false --ignore-scripts
+	# Install Node.js dependencies - use install if no lock file exists
+	if [ -f package-lock.json ]; then \
+		npm ci --production=false --ignore-scripts; \
+	else \
+		npm install --production=false --ignore-scripts; \
+	fi
 
 override_dh_auto_build:
 	# Build the Cockpit module
@@ -20,9 +24,8 @@ override_dh_auto_build:
 
 override_dh_auto_clean:
 	dh_auto_clean
-	# Clean up build artifacts
+	# Clean up build artifacts but preserve package-lock.json for builds
 	rm -rf node_modules dist
-	rm -f package-lock.json
 
 override_dh_auto_install:
 	# Install to debian package directory
