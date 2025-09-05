@@ -1,0 +1,14 @@
+@use "page.scss";
+
+// Remove shadows from all elements
+.pf-v6-c-card,
+.pf-v6-c-alert,
+.pf-v6-c-button,
+.pf-v6-c-page__main-container,
+.pf-v6-c-page__main-section {
+    box-shadow: none !important;
+}
+
+p {
+    font-weight: bold;
+}

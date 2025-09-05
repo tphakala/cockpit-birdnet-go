@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="addon">
+  <id>org.cockpit_project.birdnet_go</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>BirdNET-Go</name>
+  <summary>Cockpit management interface for BirdNET-Go</summary>
+  <description>
+    <p>
+      A Cockpit management interface for BirdNET-Go, an AI-powered
+      bird song identification system. Provides Docker container
+      management, monitoring, and configuration capabilities.
+    </p>
+  </description>
+  <extends>org.cockpit_project.cockpit</extends>
+  <launchable type="cockpit-manifest">birdnet-go</launchable>
+  <url type="homepage">https://github.com/tphakala/cockpit-birdnet-go</url>
+  <url type="bugtracker">https://github.com/tphakala/cockpit-birdnet-go/issues</url>
+  <update_contact>tphakala@gmail.com</update_contact>
+  <developer id="com.github.tphakala">
+    <name>Tommi Häkkinen</name>
+  </developer>
+</component>
