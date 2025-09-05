@@ -59,6 +59,10 @@ interface ContainerStatus {
     imagePresent: boolean;
     containerId?: string;
     status?: string;
+    isCompose?: boolean;
+    composeProject?: string;
+    composeService?: string;
+    composeWorkingDir?: string;
 }
 
 interface SystemdStatus {
@@ -245,13 +249,13 @@ export const Application = () => {
                 isActuallyRunning = false;
             }
 
-            // Check for BirdNET-Go containers - get all containers and filter manually
+            // Check for BirdNET-Go containers - get all containers with labels
             const containers = await cockpit.spawn([
                 'docker',
                 'ps',
                 '-a',
                 '--format',
-                '{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}',
+                '{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}|{{.Labels}}',
             ]);
 
             console.log('Docker containers output:', containers); // Debug logging
@@ -282,9 +286,31 @@ export const Application = () => {
                 if (birdnetContainer) {
                     const parts = birdnetContainer.split('|');
                     const status = parts[2];
+                    const labels = parts[4] || '';
 
                     console.log('Found BirdNET-Go container:', birdnetContainer); // Debug logging
                     console.log('Container status:', status, 'Docker says running:', status.startsWith('Up')); // Debug logging
+
+                    // Parse Docker Compose labels
+                    let isCompose = false;
+                    let composeProject = '';
+                    let composeService = '';
+                    let composeWorkingDir = '';
+
+                    if (labels.includes('com.docker.compose.project=')) {
+                        isCompose = true;
+                        // Extract compose project name
+                        const projectMatch = labels.match(/com.docker.compose.project=([^,]+)/);
+                        if (projectMatch) composeProject = projectMatch[1];
+                        
+                        // Extract compose service name
+                        const serviceMatch = labels.match(/com.docker.compose.service=([^,]+)/);
+                        if (serviceMatch) composeService = serviceMatch[1];
+                        
+                        // Extract working directory
+                        const workingDirMatch = labels.match(/com.docker.compose.project.working_dir=([^,]+)/);
+                        if (workingDirMatch) composeWorkingDir = workingDirMatch[1];
+                    }
 
                     // Use health API result as primary indicator, fallback to Docker status
                     setContainerStatus({
@@ -293,16 +319,20 @@ export const Application = () => {
                         imagePresent,
                         containerId: parts[0],
                         status,
+                        isCompose,
+                        composeProject,
+                        composeService,
+                        composeWorkingDir,
                     });
                 } else if (isActuallyRunning) {
                     // BirdNET-Go is responding but we can't find a specific container
-                    // This might happen if running outside Docker or with unexpected name
-                    console.log('BirdNET-Go is running but container not found in Docker'); // Debug logging
+                    // This means it's running as a native binary, not in Docker
+                    console.log('BirdNET-Go is running as native binary (not in Docker)'); // Debug logging
                     setContainerStatus({
-                        exists: true,
+                        exists: false,  // No container exists since it's a binary
                         running: true,
                         imagePresent,
-                        status: 'Running (non-Docker or custom container)',
+                        status: 'Running (native binary)',
                     });
                 } else {
                     console.log('No BirdNET-Go container found'); // Debug logging
@@ -316,10 +346,10 @@ export const Application = () => {
                 // No containers at all, but check if BirdNET-Go is running anyway
                 if (isActuallyRunning) {
                     setContainerStatus({
-                        exists: true,
+                        exists: false,  // No container since it's a binary
                         running: true,
                         imagePresent,
-                        status: 'Running (non-Docker)',
+                        status: 'Running (native binary)',
                     });
                 } else {
                     setContainerStatus({
@@ -684,11 +714,18 @@ export const Application = () => {
     const getContainerStatusText = () => {
         // Check systemd first
         if (systemdStatus.exists) {
-            if (systemdStatus.running) return _('BirdNET-Go service running (systemd)');
-            return _('BirdNET-Go service stopped (systemd)');
+            const serviceType = containerStatus.exists ? '(Docker systemd)' : '(binary systemd)';
+            if (systemdStatus.running) return _(`BirdNET-Go service running ${serviceType}`);
+            return _(`BirdNET-Go service stopped ${serviceType}`);
         }
 
-        // Then check Docker
+        // Then check Docker Compose
+        if (containerStatus.isCompose) {
+            if (containerStatus.running) return _('BirdNET-Go running (Docker Compose)');
+            return _('BirdNET-Go stopped (Docker Compose)');
+        }
+
+        // Then check standalone Docker
         if (!containerStatus.imagePresent) return _('BirdNET-Go Docker image not found');
         if (!containerStatus.exists) return _('No BirdNET-Go container found');
         if (!containerStatus.running) return _('BirdNET-Go container stopped');
@@ -929,6 +966,29 @@ export const Application = () => {
         }
     };
 
+    // Determine if this is a native binary installation (not Docker)
+    const isBinaryInstallation = () => {
+        // If systemd service exists but no container exists, it's a binary
+        if (systemdStatus.exists && !containerStatus.exists) return true;
+        
+        // If BirdNET-Go is running but no container exists, it's a binary
+        if ((containerStatus.running || systemdStatus.running) && !containerStatus.exists) return true;
+        
+        return false;
+    };
+
+    // Determine if automatic upgrades are supported
+    const supportsAutomaticUpgrade = () => {
+        // Binary installations don't support automatic upgrades
+        if (isBinaryInstallation()) return false;
+        
+        // Docker Compose deployments need manual docker-compose commands
+        if (containerStatus.isCompose) return false;
+        
+        // Only standalone Docker containers support automatic upgrades
+        return containerStatus.exists && !containerStatus.isCompose;
+    };
+
     const formatUptime = (uptimeStr: string): string => {
         if (!uptimeStr || typeof uptimeStr !== 'string') {
             return '0s';
@@ -1009,6 +1069,18 @@ export const Application = () => {
                         <Card>
                             <CardTitle>Service Controls</CardTitle>
                             <CardBody>
+                                {containerStatus.isCompose && (
+                                    <Alert
+                                        variant="warning"
+                                        title="Docker Compose deployment detected"
+                                        isInline
+                                        className="pf-v6-u-mb-md"
+                                    >
+                                        This container is managed by Docker Compose. For best results, use docker-compose commands 
+                                        in the {containerStatus.composeWorkingDir || 'compose project'} directory. 
+                                        Basic controls below may work but compose-specific operations should be done via CLI.
+                                    </Alert>
+                                )}
                                 <Flex>
                                     <FlexItem>
                                         <Button variant="secondary" onClick={refreshStatus} isLoading={loading}>
@@ -1134,7 +1206,7 @@ export const Application = () => {
                                         {systemdStatus.exists && (
                                             <>
                                                 <p style={{ marginBottom: '0.5rem' }}>
-                                                    <strong>Type:</strong> Docker (systemd managed)
+                                                    <strong>Type:</strong> {containerStatus.exists ? 'Docker (systemd managed)' : 'Binary (systemd managed)'}
                                                 </p>
                                                 <p style={{ marginBottom: '0.5rem' }}>
                                                     <strong>Service:</strong> birdnet-go.service
@@ -1148,12 +1220,27 @@ export const Application = () => {
                                                 </p>
                                             </>
                                         )}
+                                        {!systemdStatus.exists && containerStatus.isCompose && (
+                                            <p style={{ marginBottom: '0.5rem' }}>
+                                                <strong>Type:</strong> Docker Compose
+                                            </p>
+                                        )}
+                                        {!systemdStatus.exists && containerStatus.composeProject && (
+                                            <p style={{ marginBottom: '0.5rem' }}>
+                                                <strong>Compose Project:</strong> {containerStatus.composeProject}
+                                            </p>
+                                        )}
+                                        {!systemdStatus.exists && containerStatus.composeService && (
+                                            <p style={{ marginBottom: '0.5rem' }}>
+                                                <strong>Compose Service:</strong> {containerStatus.composeService}
+                                            </p>
+                                        )}
                                         {!systemdStatus.exists && containerStatus.status && (
                                             <p style={{ marginBottom: '0.5rem' }}>
                                                 <strong>Status:</strong> {containerStatus.status}
                                             </p>
                                         )}
-                                        {!systemdStatus.exists && containerStatus.containerId && (
+                                        {!systemdStatus.exists && containerStatus.containerId && !containerStatus.isCompose && (
                                             <p style={{ marginBottom: '0.5rem' }}>
                                                 <strong>Container ID:</strong>{' '}
                                                 {containerStatus.containerId.substring(0, 12)}
@@ -1374,7 +1461,8 @@ export const Application = () => {
                                                 Check for Updates
                                             </Button>
                                             {versionInfo.current?.includes('nightly') &&
-                                                versionInfo.updateAvailable && (
+                                                versionInfo.updateAvailable &&
+                                                supportsAutomaticUpgrade() && (
                                                     <Button
                                                         variant="primary"
                                                         onClick={upgradeBirdNetGo}
@@ -1387,7 +1475,8 @@ export const Application = () => {
                                                     </Button>
                                                 )}
                                             {versionInfo.updateAvailable &&
-                                                !versionInfo.current?.includes('nightly') && (
+                                                !versionInfo.current?.includes('nightly') &&
+                                                supportsAutomaticUpgrade() && (
                                                     <Button
                                                         variant="primary"
                                                         onClick={upgradeBirdNetGo}
@@ -1398,6 +1487,33 @@ export const Application = () => {
                                                     </Button>
                                                 )}
                                         </Flex>
+                                        {isBinaryInstallation() && versionInfo.updateAvailable && (
+                                            <Alert
+                                                variant="info"
+                                                title="Manual update required for binary installations"
+                                                isInline
+                                                isPlain
+                                                className="pf-v6-u-mt-md"
+                                            >
+                                                Automatic upgrades are only available for standalone Docker installations. 
+                                                Please download and install the new binary manually from the GitHub releases page.
+                                            </Alert>
+                                        )}
+                                        {containerStatus.isCompose && versionInfo.updateAvailable && (
+                                            <Alert
+                                                variant="info"
+                                                title="Manual update required for Docker Compose deployments"
+                                                isInline
+                                                isPlain
+                                                className="pf-v6-u-mt-md"
+                                            >
+                                                Docker Compose deployments must be updated manually. 
+                                                Navigate to {containerStatus.composeWorkingDir || 'your compose directory'} and run:
+                                                <code style={{ display: 'block', marginTop: '0.5rem' }}>
+                                                    docker-compose pull && docker-compose up -d
+                                                </code>
+                                            </Alert>
+                                        )}
                                         <p style={{ marginTop: '1rem' }}>
                                             <a
                                                 href="https://github.com/tphakala/birdnet-go/releases"
