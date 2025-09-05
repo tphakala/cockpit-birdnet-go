@@ -8,4 +8,4 @@ cockpit-birdnet-go (%{VERSION}) unstable; urgency=low
   * systemd service integration
   * Multi-architecture support (amd64/arm64)
 
- -- Tomi Hakala <tomi.hakala@pobox.fi>  Thu, 05 Sep 2024 18:00:00 +0000
+ -- Tomi Hakala <tphakala@users.noreply.github.com>  Thu, 05 Sep 2024 18:00:00 +0000

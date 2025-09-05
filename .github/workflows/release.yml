@@ -131,7 +131,7 @@ jobs:
           sudo apt-get install -y debhelper nodejs npm make gettext libappstream-glib8 dh-make devscripts build-essential
           
           # Set up environment
-          export DEBEMAIL="tomi.hakala@pobox.fi"
+          export DEBEMAIL="tphakala@users.noreply.github.com"
           export DEBFULLNAME="Tomi Hakala"
           
           # Build the package
@@ -232,7 +232,7 @@ jobs:
           COPY . .
           
           # Set up environment
-          ENV DEBEMAIL="tomi.hakala@pobox.fi"
+          ENV DEBEMAIL="tphakala@users.noreply.github.com"
           ENV DEBFULLNAME="Tomi Hakala"
           
           # Build the package

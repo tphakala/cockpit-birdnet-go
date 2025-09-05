@@ -1,7 +1,7 @@
 Source: cockpit-birdnet-go
 Section: admin
 Priority: optional
-Maintainer: Tomi Hakala <tomi.hakala@pobox.fi>
+Maintainer: Tomi Hakala <tphakala@users.noreply.github.com>
 Build-Depends: debhelper (>= 10),
                nodejs (>= 16),
                npm,

@@ -1,14 +1,14 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: cockpit-birdnet-go
-Upstream-Contact: Tomi Hakala <tomi.hakala@pobox.fi>
+Upstream-Contact: Tomi Hakala <tphakala@users.noreply.github.com>
 Source: https://github.com/tphakala/cockpit-birdnet-go
 
 Files: *
-Copyright: 2024 Tomi Hakala <tomi.hakala@pobox.fi>
+Copyright: 2024 Tomi Hakala <tphakala@users.noreply.github.com>
 License: LGPL-2.1-or-later
 
 Files: debian/*
-Copyright: 2024 Tomi Hakala <tomi.hakala@pobox.fi>
+Copyright: 2024 Tomi Hakala <tphakala@users.noreply.github.com>
 License: LGPL-2.1-or-later
 
 License: LGPL-2.1-or-later
