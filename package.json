@@ -29,7 +29,7 @@
     "esbuild-wasm": "0.25.9",
     "eslint": "9.35.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-config-standard": "17.1.2",
+    "eslint-config-standard": "17.1.0",
     "eslint-config-standard-jsx": "11.0.0",
     "eslint-config-standard-react": "13.0.0",
     "eslint-plugin-import": "2.32.0",
