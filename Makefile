@@ -126,7 +126,7 @@ dist: $(TARFILE)
 $(TARFILE): export NODE_ENV=production
 $(TARFILE): $(DIST_TEST) $(SPEC) packaging/arch/PKGBUILD
 	if type appstream-util >/dev/null 2>&1; then appstream-util validate-relax --nonet *.metainfo.xml; fi
-	tar --xz $(TAR_ARGS) -cf $(TARFILE) --transform 's,^,$(RPM_NAME)/,' \
+	tar --xz $(TAR_ARGS) -cf $(TARFILE) --transform 's,^,$(RPM_NAME)-$(VERSION)/,' \
 		--exclude packaging/$(SPEC).in --exclude node_modules \
 		$$(git ls-files) $(COCKPIT_REPO_FILES) $(NODE_MODULES_TEST) \
 		$(SPEC) packaging/arch/PKGBUILD dist/
