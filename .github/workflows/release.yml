@@ -59,7 +59,7 @@ jobs:
           tar -tzf $TARBALL | grep -E "(packaging|debian)" | head -20 || echo "No packaging/debian files found in tarball"
 
       - name: Upload tarball artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: source-tarball
           path: "*.tar.xz"
@@ -148,7 +148,7 @@ jobs:
           ls -la *.deb
 
       - name: Upload universal Debian package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: debian-package
           path: "*.deb"
