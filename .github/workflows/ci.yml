@@ -28,6 +28,12 @@ jobs:
       - name: Check Formatting
         run: npm run format:check
 
+      - name: Type Check
+        run: npm run typecheck
+
+      - name: Lint (ESLint)
+        run: npm run eslint
+
       - name: Lint (Stylelint)
         run: npm run stylelint
 
