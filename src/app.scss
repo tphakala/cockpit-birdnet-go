@@ -62,7 +62,7 @@ h2.pf-v6-c-card__title-text {
     --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--lg);
 
     // Only reduce on very small screens
-    @media (max-width: 428px) {
+    @media (width <= 428px) {
         --pf-v6-l-grid--Gap: var(--pf-t--global--spacer--md);
     }
 }
@@ -85,7 +85,7 @@ h2.pf-v6-c-card__title-text {
     padding-inline-end: var(--pf-t--global--spacer--lg);
 
     // On very small screens, reduce padding
-    @media screen and (max-width: 428px) {
+    @media screen and (width <= 428px) {
         padding-inline-start: var(--pf-t--global--spacer--md);
         padding-inline-end: var(--pf-t--global--spacer--md);
     }
@@ -119,7 +119,7 @@ h2.pf-v6-c-card__title-text {
     max-height: 500px;
     overflow-y: auto;
     overflow-x: hidden;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
 
     // Log timestamp styling
     .log-timestamp {
@@ -140,7 +140,6 @@ h2.pf-v6-c-card__title-text {
     // Log message styling
     .log-message {
         color: #f3f4f6;
-        word-break: break-word;
         overflow-wrap: anywhere;
     }
 
@@ -180,7 +179,7 @@ h2.pf-v6-c-card__title-text {
 .u-grid-template-columns-1fr-1fr {
     grid-template-columns: 1fr 1fr;
 
-    @media (max-width: 48rem) {
+    @media (width <= 48rem) {
         grid-template-columns: 1fr;
     }
 }
