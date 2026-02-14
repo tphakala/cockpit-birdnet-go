@@ -302,11 +302,11 @@ export const Application = () => {
                         // Extract compose project name
                         const projectMatch = labels.match(/com.docker.compose.project=([^,]+)/);
                         if (projectMatch) composeProject = projectMatch[1];
-                        
+
                         // Extract compose service name
                         const serviceMatch = labels.match(/com.docker.compose.service=([^,]+)/);
                         if (serviceMatch) composeService = serviceMatch[1];
-                        
+
                         // Extract working directory
                         const workingDirMatch = labels.match(/com.docker.compose.project.working_dir=([^,]+)/);
                         if (workingDirMatch) composeWorkingDir = workingDirMatch[1];
@@ -329,7 +329,7 @@ export const Application = () => {
                     // This means it's running as a native binary, not in Docker
                     console.log('BirdNET-Go is running as native binary (not in Docker)'); // Debug logging
                     setContainerStatus({
-                        exists: false,  // No container exists since it's a binary
+                        exists: false, // No container exists since it's a binary
                         running: true,
                         imagePresent,
                         status: 'Running (native binary)',
@@ -346,7 +346,7 @@ export const Application = () => {
                 // No containers at all, but check if BirdNET-Go is running anyway
                 if (isActuallyRunning) {
                     setContainerStatus({
-                        exists: false,  // No container since it's a binary
+                        exists: false, // No container since it's a binary
                         running: true,
                         imagePresent,
                         status: 'Running (native binary)',
@@ -970,10 +970,10 @@ export const Application = () => {
     const isBinaryInstallation = () => {
         // If systemd service exists but no container exists, it's a binary
         if (systemdStatus.exists && !containerStatus.exists) return true;
-        
+
         // If BirdNET-Go is running but no container exists, it's a binary
         if ((containerStatus.running || systemdStatus.running) && !containerStatus.exists) return true;
-        
+
         return false;
     };
 
@@ -981,10 +981,10 @@ export const Application = () => {
     const supportsAutomaticUpgrade = () => {
         // Binary installations don't support automatic upgrades
         if (isBinaryInstallation()) return false;
-        
+
         // Docker Compose deployments need manual docker-compose commands
         if (containerStatus.isCompose) return false;
-        
+
         // Only standalone Docker containers support automatic upgrades
         return containerStatus.exists && !containerStatus.isCompose;
     };
@@ -1076,9 +1076,10 @@ export const Application = () => {
                                         isInline
                                         className="pf-v6-u-mb-md"
                                     >
-                                        This container is managed by Docker Compose. For best results, use docker-compose commands 
-                                        in the {containerStatus.composeWorkingDir || 'compose project'} directory. 
-                                        Basic controls below may work but compose-specific operations should be done via CLI.
+                                        This container is managed by Docker Compose. For best results, use
+                                        docker-compose commands in the{' '}
+                                        {containerStatus.composeWorkingDir || 'compose project'} directory. Basic
+                                        controls below may work but compose-specific operations should be done via CLI.
                                     </Alert>
                                 )}
                                 <Flex>
@@ -1206,7 +1207,10 @@ export const Application = () => {
                                         {systemdStatus.exists && (
                                             <>
                                                 <p style={{ marginBottom: '0.5rem' }}>
-                                                    <strong>Type:</strong> {containerStatus.exists ? 'Docker (systemd managed)' : 'Binary (systemd managed)'}
+                                                    <strong>Type:</strong>{' '}
+                                                    {containerStatus.exists
+                                                        ? 'Docker (systemd managed)'
+                                                        : 'Binary (systemd managed)'}
                                                 </p>
                                                 <p style={{ marginBottom: '0.5rem' }}>
                                                     <strong>Service:</strong> birdnet-go.service
@@ -1240,12 +1244,14 @@ export const Application = () => {
                                                 <strong>Status:</strong> {containerStatus.status}
                                             </p>
                                         )}
-                                        {!systemdStatus.exists && containerStatus.containerId && !containerStatus.isCompose && (
-                                            <p style={{ marginBottom: '0.5rem' }}>
-                                                <strong>Container ID:</strong>{' '}
-                                                {containerStatus.containerId.substring(0, 12)}
-                                            </p>
-                                        )}
+                                        {!systemdStatus.exists &&
+                                            containerStatus.containerId &&
+                                            !containerStatus.isCompose && (
+                                                <p style={{ marginBottom: '0.5rem' }}>
+                                                    <strong>Container ID:</strong>{' '}
+                                                    {containerStatus.containerId.substring(0, 12)}
+                                                </p>
+                                            )}
                                         {(containerStatus.running || systemdStatus.running) && (
                                             <p style={{ marginBottom: '0.5rem' }}>
                                                 <strong>Web Interface:</strong>{' '}
@@ -1495,8 +1501,9 @@ export const Application = () => {
                                                 isPlain
                                                 className="pf-v6-u-mt-md"
                                             >
-                                                Automatic upgrades are only available for standalone Docker installations. 
-                                                Please download and install the new binary manually from the GitHub releases page.
+                                                Automatic upgrades are only available for standalone Docker
+                                                installations. Please download and install the new binary manually from
+                                                the GitHub releases page.
                                             </Alert>
                                         )}
                                         {containerStatus.isCompose && versionInfo.updateAvailable && (
@@ -1507,8 +1514,8 @@ export const Application = () => {
                                                 isPlain
                                                 className="pf-v6-u-mt-md"
                                             >
-                                                Docker Compose deployments must be updated manually. 
-                                                Navigate to {containerStatus.composeWorkingDir || 'your compose directory'} and run:
+                                                Docker Compose deployments must be updated manually. Navigate to{' '}
+                                                {containerStatus.composeWorkingDir || 'your compose directory'} and run:
                                                 <code style={{ display: 'block', marginTop: '0.5rem' }}>
                                                     docker-compose pull && docker-compose up -d
                                                 </code>
