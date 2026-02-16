@@ -32,16 +32,20 @@
     "eslint-plugin-promise": "7.2.1",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
-    "gettext-parser": "8.0.0",
+<<<<<<< Updated upstream
+    "gettext-parser": "9.0.1",
+=======
+    "gettext-parser": "^9.0.1",
+>>>>>>> Stashed changes
     "glob": "11.1.0",
     "jed": "1.1.1",
     "neostandard": "^0.12.2",
     "prettier": "^3.6.2",
     "qunit": "2.25.0",
-    "stylelint": "16.25.0",
-    "stylelint-config-recommended-scss": "16.0.2",
-    "stylelint-config-standard": "39.0.1",
-    "stylelint-config-standard-scss": "16.0.0",
+    "stylelint": "^17.3.0",
+    "stylelint-config-recommended-scss": "^17.0.0",
+    "stylelint-config-standard": "^40.0.0",
+    "stylelint-config-standard-scss": "^17.0.0",
     "stylelint-formatter-pretty": "4.0.1",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.55.0"
