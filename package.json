@@ -25,7 +25,7 @@
     "@types/react-dom": "18.3.1",
     "argparse": "2.0.1",
     "esbuild": "0.27.3",
-    "esbuild-sass-plugin": "3.6.0",
+    "esbuild-sass-plugin": "3.7.0",
     "esbuild-wasm": "0.27.3",
     "eslint": "9.39.2",
     "eslint-config-prettier": "^10.1.8",
