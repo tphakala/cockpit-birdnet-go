@@ -23,10 +23,15 @@ import { createRoot } from 'react-dom/client';
 import 'cockpit-dark-theme';
 
 import { Application } from './app';
+import { ErrorBoundary } from './ErrorBoundary';
 
 import 'patternfly/patternfly-6-cockpit.scss';
 import './app.scss';
 
 document.addEventListener('DOMContentLoaded', () => {
-    createRoot(document.getElementById('app')!).render(<Application />);
+    createRoot(document.getElementById('app')!).render(
+        <ErrorBoundary>
+            <Application />
+        </ErrorBoundary>
+    );
 });
