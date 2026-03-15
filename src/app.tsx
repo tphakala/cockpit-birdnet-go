@@ -41,6 +41,7 @@ import {
     getDockerStatusVariant,
     getLogLevelColor,
     isBinaryInstallation,
+    isValidLogFile,
     supportsAutomaticUpgrade,
 } from './utils';
 
@@ -369,6 +370,13 @@ export const Application = () => {
     const fetchAppLogs = useCallback(async () => {
         if (!selectedLogFile) return;
 
+        // Validate the selected log file to prevent path traversal
+        if (!isValidLogFile(selectedLogFile, logFiles)) {
+            console.error('Invalid log file name:', selectedLogFile);
+            setAppLogs([]);
+            return;
+        }
+
         try {
             const logPath = `/home/thakala/birdnet-go-app/data/logs/${selectedLogFile}`;
             const result = await cockpit.spawn(['tail', '-n', '500', logPath]);
@@ -392,7 +400,7 @@ export const Application = () => {
             console.error('Error fetching app logs:', error);
             setAppLogs([]);
         }
-    }, [selectedLogFile]);
+    }, [selectedLogFile, logFiles]);
 
     const checkForUpdates = useCallback(async () => {
         setVersionInfo(prev => ({ ...prev, checkingUpdate: true }));
@@ -1429,7 +1437,10 @@ export const Application = () => {
                                             <Select
                                                 isOpen={logSelectOpen}
                                                 onSelect={(_, value) => {
-                                                    setSelectedLogFile(value as string);
+                                                    const file = value as string;
+                                                    if (isValidLogFile(file, logFiles)) {
+                                                        setSelectedLogFile(file);
+                                                    }
                                                     setLogSelectOpen(false);
                                                 }}
                                                 toggle={toggleRef => (

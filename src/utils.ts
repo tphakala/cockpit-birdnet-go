@@ -126,6 +126,41 @@ export const getContainerStatusVariant = (
     return 'success';
 };
 
+/**
+ * Sanitize a file name to prevent path traversal attacks.
+ * Strips path separators, rejects ".." sequences, and only allows
+ * alphanumeric characters, dots, hyphens, and underscores.
+ * Returns the basename only.
+ */
+export const sanitizeFileName = (name: string): string => {
+    if (!name || typeof name !== 'string') return '';
+
+    // Extract basename by removing everything before the last path separator
+    let basename = name;
+    const lastSlash = Math.max(basename.lastIndexOf('/'), basename.lastIndexOf('\\'));
+    if (lastSlash >= 0) {
+        basename = basename.substring(lastSlash + 1);
+    }
+
+    // Reject if it contains ".."
+    if (basename.includes('..')) return '';
+
+    // Only allow alphanumeric, dots, hyphens, underscores
+    if (!/^[a-zA-Z0-9._-]+$/.test(basename)) return '';
+
+    return basename;
+};
+
+/**
+ * Validate that a log file name is safe and exists in the allowed files list.
+ */
+export const isValidLogFile = (name: string, allowedFiles: string[]): boolean => {
+    const sanitized = sanitizeFileName(name);
+    if (!sanitized) return false;
+    if (sanitized !== name) return false;
+    return allowedFiles.includes(sanitized);
+};
+
 export const filterLogs = (logs: LogEntry[], levelFilter: string, searchText: string): LogEntry[] => {
     return logs.filter(log => {
         if (levelFilter !== 'all' && log.level?.toUpperCase() !== levelFilter.toUpperCase()) {
