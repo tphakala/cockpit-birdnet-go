@@ -175,12 +175,18 @@ export const Application = () => {
                 ]);
 
                 if (result) {
-                    const healthData = JSON.parse(result);
-                    isActuallyRunning = healthData.status === 'healthy' || healthData.status === 'degraded';
+                    try {
+                        const healthData = JSON.parse(result);
+                        isActuallyRunning = healthData.status === 'healthy' || healthData.status === 'degraded';
+                    } catch (e) {
+                        console.warn('Health check API returned invalid JSON:', e);
+                        isActuallyRunning = false;
+                    }
                 } else {
                     isActuallyRunning = false;
                 }
             } catch {
+                // Expected if the service is not running
                 isActuallyRunning = false;
             }
 
