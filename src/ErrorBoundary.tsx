@@ -1,5 +1,5 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
-import { Alert, AlertActionCloseButton } from '@patternfly/react-core/dist/esm/components/Alert/index.js';
+import { Alert } from '@patternfly/react-core/dist/esm/components/Alert/index.js';
 import { Button } from '@patternfly/react-core/dist/esm/components/Button/index.js';
 import { Page, PageSection } from '@patternfly/react-core/dist/esm/components/Page/index.js';
 
@@ -34,11 +34,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                         <Alert
                             variant="danger"
                             title="Something went wrong"
-                            actionClose={
-                                <AlertActionCloseButton
-                                    onClose={() => this.setState({ hasError: false, error: null })}
-                                />
-                            }
                             actionLinks={
                                 <Button variant="link" onClick={() => window.location.reload()}>
                                     Reload
