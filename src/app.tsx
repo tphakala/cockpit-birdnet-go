@@ -42,7 +42,6 @@ import {
     getLogLevelColor,
     isBinaryInstallation,
     isValidLogFile,
-    sanitizeFileName,
     supportsAutomaticUpgrade,
 } from './utils';
 
@@ -372,15 +371,14 @@ export const Application = () => {
         if (!selectedLogFile) return;
 
         // Validate the selected log file to prevent path traversal
-        const sanitized = sanitizeFileName(selectedLogFile);
-        if (!sanitized || !isValidLogFile(selectedLogFile, logFiles)) {
+        if (!isValidLogFile(selectedLogFile, logFiles)) {
             console.error('Invalid log file name:', selectedLogFile);
             setAppLogs([]);
             return;
         }
 
         try {
-            const logPath = `/home/thakala/birdnet-go-app/data/logs/${sanitized}`;
+            const logPath = `/home/thakala/birdnet-go-app/data/logs/${selectedLogFile}`;
             const result = await cockpit.spawn(['tail', '-n', '500', logPath]);
 
             // Parse JSON logs
