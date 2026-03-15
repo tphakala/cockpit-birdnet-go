@@ -138,16 +138,6 @@ export const Application = () => {
                     simpleStatus = 'inactive';
                 }
 
-                console.log(
-                    'Systemd service found:',
-                    'Status:',
-                    simpleStatus,
-                    'Running:',
-                    isRunning,
-                    'Enabled:',
-                    isEnabled
-                );
-
                 setSystemdStatus({
                     exists: true,
                     running: isRunning,
@@ -155,7 +145,6 @@ export const Application = () => {
                     status: simpleStatus,
                 });
             } else {
-                console.log('Systemd service not found');
                 setSystemdStatus({
                     exists: false,
                     running: false,
@@ -186,15 +175,18 @@ export const Application = () => {
                 ]);
 
                 if (result) {
-                    const healthData = JSON.parse(result);
-                    isActuallyRunning = healthData.status === 'healthy' || healthData.status === 'degraded';
-                    console.log('Health check API response - BirdNET-Go is running:', isActuallyRunning);
+                    try {
+                        const healthData = JSON.parse(result);
+                        isActuallyRunning = healthData.status === 'healthy' || healthData.status === 'degraded';
+                    } catch (e) {
+                        console.warn('Health check API returned invalid JSON:', e);
+                        isActuallyRunning = false;
+                    }
                 } else {
-                    console.log('Health check API returned empty response');
                     isActuallyRunning = false;
                 }
             } catch {
-                console.log('Health check API failed - BirdNET-Go likely not running');
+                // Expected if the service is not running
                 isActuallyRunning = false;
             }
 
@@ -206,8 +198,6 @@ export const Application = () => {
                 '--format',
                 '{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}|{{.Labels}}',
             ]);
-
-            console.log('Docker containers output:', containers); // Debug logging
 
             if (containers.trim()) {
                 const containerLines = containers.trim().split('\n');
@@ -236,9 +226,6 @@ export const Application = () => {
                     const parts = birdnetContainer.split('|');
                     const status = parts[2];
                     const labels = parts[4] || '';
-
-                    console.log('Found BirdNET-Go container:', birdnetContainer); // Debug logging
-                    console.log('Container status:', status, 'Docker says running:', status.startsWith('Up')); // Debug logging
 
                     // Parse Docker Compose labels
                     let isCompose = false;
@@ -276,7 +263,6 @@ export const Application = () => {
                 } else if (isActuallyRunning) {
                     // BirdNET-Go is responding but we can't find a specific container
                     // This means it's running as a native binary, not in Docker
-                    console.log('BirdNET-Go is running as native binary (not in Docker)'); // Debug logging
                     setContainerStatus({
                         exists: false, // No container exists since it's a binary
                         running: true,
@@ -284,7 +270,6 @@ export const Application = () => {
                         status: 'Running (native binary)',
                     });
                 } else {
-                    console.log('No BirdNET-Go container found'); // Debug logging
                     setContainerStatus({
                         exists: false,
                         running: false,
