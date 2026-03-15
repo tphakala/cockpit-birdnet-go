@@ -18,12 +18,16 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+          cache: 'npm'
 
       - name: Fetch Cockpit lib
         run: make pkg/lib
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Check Formatting
         run: npm run format:check
