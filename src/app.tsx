@@ -462,6 +462,12 @@ export const Application = () => {
                             [],
                             'GitHub Container Registry versions'
                         );
+
+                        // If parsing failed or returned empty, fall through to catch block
+                        if (!versions.length) {
+                            throw new Error('Failed to parse container registry response');
+                        }
+
                         const nightlyTags: string[] = [];
                         let latestNightlyDate = 0;
                         let latestNightlyTag = '';
