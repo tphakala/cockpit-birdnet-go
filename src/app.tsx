@@ -31,6 +31,23 @@ import { SearchInput } from '@patternfly/react-core/dist/esm/components/SearchIn
 
 import cockpit from 'cockpit';
 
+import {
+    BIRDNET_METRICS_PORT,
+    BIRDNET_PORT,
+    CONTAINER_NAME,
+    DEFAULT_CONFIG_DIR,
+    DEFAULT_DATA_DIR,
+    DEFAULT_LOG_DIR,
+    DOCKER_IMAGE,
+    getHealthUrl,
+    getImageRef,
+    getWebInterfaceUrl,
+    GITHUB_PACKAGES_URL,
+    GITHUB_REGISTRY_PAGE_URL,
+    GITHUB_RELEASES_LATEST_URL,
+    GITHUB_RELEASES_PAGE_URL,
+    SERVICE_NAME,
+} from './config';
 import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStatus, VersionInfo } from './types';
 import {
     capitalize,
@@ -110,9 +127,9 @@ export const Application = () => {
                 'list-unit-files',
                 '--no-pager',
                 '--plain',
-                'birdnet-go.service',
+                SERVICE_NAME,
             ]);
-            const serviceExists = serviceFiles.includes('birdnet-go.service');
+            const serviceExists = serviceFiles.includes(SERVICE_NAME);
 
             if (serviceExists) {
                 // Get simple status - these commands work without sudo
@@ -122,7 +139,7 @@ export const Application = () => {
 
                 // Check if enabled
                 try {
-                    const enabledState = await cockpit.spawn(['systemctl', 'is-enabled', 'birdnet-go.service']);
+                    const enabledState = await cockpit.spawn(['systemctl', 'is-enabled', SERVICE_NAME]);
                     isEnabled = enabledState.trim() === 'enabled';
                 } catch {
                     // is-enabled returns non-zero if not enabled
@@ -130,7 +147,7 @@ export const Application = () => {
 
                 // Check if active
                 try {
-                    const activeState = await cockpit.spawn(['systemctl', 'is-active', 'birdnet-go.service']);
+                    const activeState = await cockpit.spawn(['systemctl', 'is-active', SERVICE_NAME]);
                     simpleStatus = activeState.trim();
                     isRunning = simpleStatus === 'active';
                 } catch {
@@ -172,7 +189,7 @@ export const Application = () => {
         try {
             // Check if BirdNET-Go image exists
             const images = await cockpit.spawn(['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}']);
-            const imagePresent = images.includes('ghcr.io/tphakala/birdnet-go');
+            const imagePresent = images.includes(DOCKER_IMAGE);
 
             // First, try to check if BirdNET-Go is running via health API
             let isActuallyRunning = false;
@@ -182,7 +199,7 @@ export const Application = () => {
                     '-s', // Silent mode
                     '-m',
                     '2', // 2 second timeout
-                    `http://${window.location.hostname}:8080/api/v2/health`,
+                    getHealthUrl(window.location.hostname),
                 ]);
 
                 if (result) {
@@ -225,11 +242,7 @@ export const Application = () => {
                     }
 
                     // Match official BirdNET-Go images or container name
-                    return (
-                        image.startsWith('ghcr.io/tphakala/birdnet-go') ||
-                        image === 'birdnet-go' ||
-                        name === 'birdnet-go'
-                    );
+                    return image.startsWith(DOCKER_IMAGE) || image === CONTAINER_NAME || name === CONTAINER_NAME;
                 });
 
                 if (birdnetContainer) {
@@ -331,7 +344,7 @@ export const Application = () => {
 
     const fetchLogFiles = useCallback(async () => {
         try {
-            const result = await cockpit.spawn(['ls', '-1', '/home/thakala/birdnet-go-app/data/logs/']);
+            const result = await cockpit.spawn(['ls', '-1', DEFAULT_LOG_DIR]);
             const files = result
                 .trim()
                 .split('\n')
@@ -359,7 +372,7 @@ export const Application = () => {
                 '-s', // Silent mode
                 '-m',
                 '5', // 5 second timeout
-                `http://${window.location.hostname}:8080/api/v2/health`,
+                getHealthUrl(window.location.hostname),
             ]);
 
             if (result) {
@@ -385,7 +398,7 @@ export const Application = () => {
         if (!selectedLogFile) return;
 
         try {
-            const logPath = `/home/thakala/birdnet-go-app/data/logs/${selectedLogFile}`;
+            const logPath = `${DEFAULT_LOG_DIR}/${selectedLogFile}`;
             const result = await cockpit.spawn(['tail', '-n', '500', logPath]);
 
             // Parse JSON logs
@@ -432,7 +445,7 @@ export const Application = () => {
                         '10',
                         '-H',
                         'Accept: application/vnd.github+json',
-                        'https://api.github.com/orgs/tphakala/packages/container/birdnet-go/versions?per_page=20',
+                        GITHUB_PACKAGES_URL,
                     ]);
 
                     if (packageResult) {
@@ -478,7 +491,7 @@ export const Application = () => {
                             releaseNotes: updateAvailable
                                 ? `Newer nightly build available: ${latestNightlyTag}`
                                 : 'You are on the latest nightly build',
-                            releaseUrl: 'https://github.com/tphakala/birdnet-go/pkgs/container/birdnet-go',
+                            releaseUrl: GITHUB_REGISTRY_PAGE_URL,
                         }));
                     }
                 } catch (registryError) {
@@ -490,18 +503,12 @@ export const Application = () => {
                         updateAvailable: false,
                         checkingUpdate: false,
                         releaseNotes: 'Nightly builds contain the latest development features and fixes',
-                        releaseUrl: 'https://github.com/tphakala/birdnet-go/pkgs/container/birdnet-go',
+                        releaseUrl: GITHUB_REGISTRY_PAGE_URL,
                     }));
                 }
             } else {
                 // For stable versions, check against GitHub releases
-                const result = await cockpit.spawn([
-                    'curl',
-                    '-s',
-                    '-m',
-                    '10',
-                    'https://api.github.com/repos/tphakala/birdnet-go/releases/latest',
-                ]);
+                const result = await cockpit.spawn(['curl', '-s', '-m', '10', GITHUB_RELEASES_LATEST_URL]);
 
                 if (result) {
                     const release = JSON.parse(result);
@@ -708,16 +715,16 @@ export const Application = () => {
                 'run',
                 '-d',
                 '--name',
-                'birdnet-go',
+                CONTAINER_NAME,
                 '-p',
-                '8080:8080',
+                `${BIRDNET_PORT}:${BIRDNET_PORT}`,
                 '-p',
-                '8090:8090',
+                `${BIRDNET_METRICS_PORT}:${BIRDNET_METRICS_PORT}`,
                 '-v',
-                '/home/thakala/birdnet-go-app/config:/config',
+                `${DEFAULT_CONFIG_DIR}:/config`,
                 '-v',
-                '/home/thakala/birdnet-go-app/data:/data',
-                'ghcr.io/tphakala/birdnet-go:nightly',
+                `${DEFAULT_DATA_DIR}:/data`,
+                getImageRef(),
             ]);
             await refreshStatus();
         } catch (error) {
@@ -727,7 +734,7 @@ export const Application = () => {
 
     const pullImage = async () => {
         try {
-            await cockpit.spawn(['docker', 'pull', 'ghcr.io/tphakala/birdnet-go:nightly']);
+            await cockpit.spawn(['docker', 'pull', getImageRef()]);
             await refreshStatus();
         } catch (error) {
             console.error('Error pulling image:', error);
@@ -737,7 +744,7 @@ export const Application = () => {
     // Systemd service controls
     const startSystemdService = async () => {
         try {
-            await cockpit.spawn(['systemctl', 'start', 'birdnet-go.service'], { superuser: 'try' });
+            await cockpit.spawn(['systemctl', 'start', SERVICE_NAME], { superuser: 'try' });
             await refreshStatus();
         } catch (error) {
             console.error('Error starting systemd service:', error);
@@ -746,7 +753,7 @@ export const Application = () => {
 
     const stopSystemdService = async () => {
         try {
-            await cockpit.spawn(['systemctl', 'stop', 'birdnet-go.service'], { superuser: 'try' });
+            await cockpit.spawn(['systemctl', 'stop', SERVICE_NAME], { superuser: 'try' });
             await refreshStatus();
         } catch (error) {
             console.error('Error stopping systemd service:', error);
@@ -756,7 +763,7 @@ export const Application = () => {
     const restartSystemdService = async () => {
         setRestarting(true);
         try {
-            await cockpit.spawn(['systemctl', 'restart', 'birdnet-go.service'], { superuser: 'try' });
+            await cockpit.spawn(['systemctl', 'restart', SERVICE_NAME], { superuser: 'try' });
             await refreshStatus();
         } catch (error) {
             console.error('Error restarting systemd service:', error);
@@ -767,7 +774,7 @@ export const Application = () => {
 
     const enableSystemdService = async () => {
         try {
-            await cockpit.spawn(['systemctl', 'enable', 'birdnet-go.service'], { superuser: 'try' });
+            await cockpit.spawn(['systemctl', 'enable', SERVICE_NAME], { superuser: 'try' });
             await refreshStatus();
         } catch (error) {
             console.error('Error enabling systemd service:', error);
@@ -800,7 +807,7 @@ export const Application = () => {
                 imageTag = versionInfo.latest ? `v${versionInfo.latest}` : 'latest';
             }
 
-            const imageName = `ghcr.io/tphakala/birdnet-go:${imageTag}`;
+            const imageName = getImageRef(imageTag);
 
             // Pull the new image
             await cockpit.spawn(['docker', 'pull', imageName]);
@@ -808,7 +815,7 @@ export const Application = () => {
             if (systemdStatus.exists) {
                 // For systemd service that runs Docker, just restart the service
                 // The service will pull and run the latest image
-                await cockpit.spawn(['systemctl', 'restart', 'birdnet-go.service'], { superuser: 'try' });
+                await cockpit.spawn(['systemctl', 'restart', SERVICE_NAME], { superuser: 'try' });
             } else if (containerStatus.containerId) {
                 // For standalone Docker container
                 // Stop current container
@@ -1005,10 +1012,7 @@ export const Application = () => {
                                             <Button
                                                 variant="secondary"
                                                 onClick={() =>
-                                                    window.open(
-                                                        'http://' + window.location.hostname + ':8080',
-                                                        '_blank'
-                                                    )
+                                                    window.open(getWebInterfaceUrl(window.location.hostname), '_blank')
                                                 }
                                             >
                                                 Open Web Interface
@@ -1037,7 +1041,7 @@ export const Application = () => {
                                                         : 'Binary (systemd managed)'}
                                                 </p>
                                                 <p style={{ marginBottom: '0.5rem' }}>
-                                                    <strong>Service:</strong> birdnet-go.service
+                                                    <strong>Service:</strong> {SERVICE_NAME}
                                                 </p>
                                                 <p style={{ marginBottom: '0.5rem' }}>
                                                     <strong>Status:</strong> {systemdStatus.status}
@@ -1080,11 +1084,11 @@ export const Application = () => {
                                             <p style={{ marginBottom: '0.5rem' }}>
                                                 <strong>Web Interface:</strong>{' '}
                                                 <a
-                                                    href={`http://${window.location.hostname}:8080`}
+                                                    href={getWebInterfaceUrl(window.location.hostname)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                 >
-                                                    http://{window.location.hostname}:8080
+                                                    {getWebInterfaceUrl(window.location.hostname)}
                                                 </a>
                                             </p>
                                         )}
@@ -1348,7 +1352,7 @@ export const Application = () => {
                                         )}
                                         <p style={{ marginTop: '1rem' }}>
                                             <a
-                                                href="https://github.com/tphakala/birdnet-go/releases"
+                                                href={GITHUB_RELEASES_PAGE_URL}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
@@ -1356,7 +1360,7 @@ export const Application = () => {
                                             </a>
                                             {' | '}
                                             <a
-                                                href="https://github.com/tphakala/birdnet-go/pkgs/container/birdnet-go"
+                                                href={GITHUB_REGISTRY_PAGE_URL}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
