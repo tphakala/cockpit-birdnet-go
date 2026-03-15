@@ -19,6 +19,19 @@
 
 import type { ContainerStatus, DockerStatus, LogEntry, SystemdStatus } from './types';
 
+/**
+ * Safely parse a JSON string, returning a fallback value if parsing fails.
+ * Logs a warning with context about what failed to parse.
+ */
+export const safeJsonParse = <T>(json: string, fallback: T, context?: string): T => {
+    try {
+        return JSON.parse(json) as T;
+    } catch (error) {
+        console.warn(`Failed to parse JSON${context ? ` (${context})` : ''}:`, error);
+        return fallback;
+    }
+};
+
 export const capitalize = (str?: string): string => {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1);

@@ -41,6 +41,7 @@ import {
     getDockerStatusVariant,
     getLogLevelColor,
     isBinaryInstallation,
+    safeJsonParse,
     supportsAutomaticUpgrade,
 } from './utils';
 
@@ -186,7 +187,11 @@ export const Application = () => {
                 ]);
 
                 if (result) {
-                    const healthData = JSON.parse(result);
+                    const healthData = safeJsonParse<{ status?: string }>(
+                        result,
+                        {},
+                        'health check during status detection'
+                    );
                     isActuallyRunning = healthData.status === 'healthy' || healthData.status === 'degraded';
                     console.log('Health check API response - BirdNET-Go is running:', isActuallyRunning);
                 } else {
@@ -363,14 +368,19 @@ export const Application = () => {
             ]);
 
             if (result) {
-                const data = JSON.parse(result);
-                setHealthStatus(data);
-                // Update version info
-                setVersionInfo(prev => ({
-                    ...prev,
-                    current: data.version,
-                    buildDate: data.build_date,
-                }));
+                const data = safeJsonParse<HealthStatus | null>(result, null, 'health status response');
+                if (data) {
+                    setHealthStatus(data);
+                    // Update version info
+                    setVersionInfo(prev => ({
+                        ...prev,
+                        current: data.version,
+                        buildDate: data.build_date,
+                    }));
+                } else {
+                    console.warn('Health check returned invalid JSON, clearing health status');
+                    setHealthStatus(null);
+                }
             } else {
                 console.error('Health check returned empty response');
                 setHealthStatus(null);
@@ -436,7 +446,11 @@ export const Application = () => {
                     ]);
 
                     if (packageResult) {
-                        const versions = JSON.parse(packageResult);
+                        const versions = safeJsonParse<{ metadata?: { container?: { tags?: string[] } } }[]>(
+                            packageResult,
+                            [],
+                            'GitHub Container Registry versions'
+                        );
                         const nightlyTags: string[] = [];
                         let latestNightlyDate = 0;
                         let latestNightlyTag = '';
@@ -504,7 +518,11 @@ export const Application = () => {
                 ]);
 
                 if (result) {
-                    const release = JSON.parse(result);
+                    const release = safeJsonParse<{ tag_name?: string; html_url?: string; body?: string }>(
+                        result,
+                        {},
+                        'GitHub latest release'
+                    );
                     const latestStable = release.tag_name?.replace('v', '');
 
                     // Compare semantic versions for stable releases
@@ -526,11 +544,11 @@ export const Application = () => {
 
                     setVersionInfo(prev => ({
                         ...prev,
-                        latest: latestStable,
+                        ...(latestStable !== undefined && { latest: latestStable }),
                         updateAvailable,
                         checkingUpdate: false,
-                        releaseNotes: release.body,
-                        releaseUrl: release.html_url,
+                        ...(release.body !== undefined && { releaseNotes: release.body }),
+                        ...(release.html_url !== undefined && { releaseUrl: release.html_url }),
                     }));
                 }
             }
@@ -816,7 +834,21 @@ export const Application = () => {
 
                 // Get current container configuration
                 const configJson = await cockpit.spawn(['docker', 'inspect', containerStatus.containerId]);
-                const config = JSON.parse(configJson)[0];
+                interface DockerInspectResult {
+                    Name: string;
+                    HostConfig?: {
+                        PortBindings?: Record<string, { HostPort: string }[]>;
+                    };
+                    Mounts?: { Type: string; Source: string; Destination: string }[];
+                    Config?: {
+                        Env?: string[];
+                    };
+                }
+                const inspectResult = safeJsonParse<DockerInspectResult[]>(configJson, [], 'docker inspect output');
+                if (!inspectResult.length) {
+                    throw new Error('Failed to parse container configuration from docker inspect');
+                }
+                const config = inspectResult[0];
 
                 // Remove old container
                 await cockpit.spawn(['docker', 'rm', containerStatus.containerId]);
