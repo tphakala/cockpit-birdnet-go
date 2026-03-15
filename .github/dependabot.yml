@@ -8,6 +8,8 @@ updates:
       time: "22:00"
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 3
+    reviewers:
+      - "tphakala"
     groups:
       eslint:
         patterns:
@@ -45,6 +47,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     open-pull-requests-limit: 3
+    reviewers:
+      - "tphakala"
     labels:
       - "no-test"
     schedule:
