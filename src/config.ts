@@ -40,7 +40,7 @@ export const SERVICE_NAME = 'birdnet-go.service';
 // ── Host Paths ──────────────────────────────────────────────────────────────
 
 /** Default base directory for BirdNET-Go data on the host */
-export const DEFAULT_BASE_DIR = '/home/thakala/birdnet-go-app';
+export const DEFAULT_BASE_DIR = '/opt/birdnet-go';
 
 /** Default log directory (derived from base dir) */
 export const DEFAULT_LOG_DIR = `${DEFAULT_BASE_DIR}/data/logs`;
@@ -66,7 +66,7 @@ export const GITHUB_PACKAGES_URL = `https://api.github.com/orgs/${GITHUB_OWNER}/
 export const GITHUB_RELEASES_PAGE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
 /** Human-readable container registry page */
-export const GITHUB_REGISTRY_PAGE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/pkgs/container/${GITHUB_REPO}`;
+export const GITHUB_REGISTRY_PAGE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/pkgs/container/${CONTAINER_NAME}`;
 
 // ── Derived Helpers ─────────────────────────────────────────────────────────
 
@@ -81,10 +81,8 @@ export const getHealthUrl = (hostname: string, port: number = BIRDNET_PORT): str
 export const getWebInterfaceUrl = (hostname: string, port: number = BIRDNET_PORT): string =>
     `http://${hostname}:${port}`;
 
-/** Build the log directory path. When a container ID is provided, attempts
- *  to detect the path from the container's mount configuration. Falls back
- *  to DEFAULT_LOG_DIR. The actual detection is async and handled separately
- *  so this function only returns the static default. */
+/** Returns the static default log directory path.
+ *  For dynamic detection from a running container, use `detectLogDirFromInspect`. */
 export const getLogDir = (): string => DEFAULT_LOG_DIR;
 
 /**
