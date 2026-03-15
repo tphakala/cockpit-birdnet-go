@@ -10,6 +10,8 @@ import {
     getDockerStatusVariant,
     getLogLevelColor,
     isBinaryInstallation,
+    isValidLogFile,
+    sanitizeFileName,
     supportsAutomaticUpgrade,
 } from './utils';
 
@@ -279,5 +281,104 @@ describe('filterLogs', () => {
 
     it('handles empty logs array', () => {
         expect(filterLogs([], 'all', '')).toHaveLength(0);
+    });
+});
+
+describe('sanitizeFileName', () => {
+    it('returns a valid filename unchanged', () => {
+        expect(sanitizeFileName('analysis.log')).toBe('analysis.log');
+    });
+
+    it('allows hyphens and underscores', () => {
+        expect(sanitizeFileName('my-log_file.log')).toBe('my-log_file.log');
+    });
+
+    it('allows alphanumeric names', () => {
+        expect(sanitizeFileName('log2025.log')).toBe('log2025.log');
+    });
+
+    it('strips forward slash path components and returns basename', () => {
+        expect(sanitizeFileName('/etc/passwd')).toBe('passwd');
+    });
+
+    it('strips backslash path components and returns basename', () => {
+        expect(sanitizeFileName('C:\\Windows\\system32\\config')).toBe('config');
+    });
+
+    it('rejects double-dot sequences', () => {
+        expect(sanitizeFileName('..%2f..%2fetc/passwd')).toBe('passwd');
+        expect(sanitizeFileName('../../../etc/passwd')).toBe('passwd');
+    });
+
+    it('rejects basename containing double dots', () => {
+        expect(sanitizeFileName('..analysis.log')).toBe('');
+        expect(sanitizeFileName('foo..bar')).toBe('');
+    });
+
+    it('returns empty for path traversal attempts after basename extraction', () => {
+        expect(sanitizeFileName('..')).toBe('');
+        expect(sanitizeFileName('../..')).toBe('');
+    });
+
+    it('rejects names with special characters', () => {
+        expect(sanitizeFileName('file name.log')).toBe('');
+        expect(sanitizeFileName('file;rm -rf /')).toBe('');
+        expect(sanitizeFileName('file$(whoami).log')).toBe('');
+        expect(sanitizeFileName('file`id`.log')).toBe('');
+        expect(sanitizeFileName("file'name.log")).toBe('');
+        expect(sanitizeFileName('file"name.log')).toBe('');
+    });
+
+    it('returns empty for empty or falsy input', () => {
+        expect(sanitizeFileName('')).toBe('');
+        expect(sanitizeFileName(null as unknown as string)).toBe('');
+        expect(sanitizeFileName(undefined as unknown as string)).toBe('');
+    });
+
+    it('returns empty for whitespace-only input', () => {
+        expect(sanitizeFileName('   ')).toBe('');
+    });
+
+    it('handles names with only dots', () => {
+        expect(sanitizeFileName('.')).toBe('.');
+        expect(sanitizeFileName('.hidden')).toBe('.hidden');
+    });
+});
+
+describe('isValidLogFile', () => {
+    const allowedFiles = ['analysis.log', 'birdnet.log', 'system-2025.log'];
+
+    it('returns true for a valid file in the allowed list', () => {
+        expect(isValidLogFile('analysis.log', allowedFiles)).toBe(true);
+        expect(isValidLogFile('birdnet.log', allowedFiles)).toBe(true);
+        expect(isValidLogFile('system-2025.log', allowedFiles)).toBe(true);
+    });
+
+    it('returns false for a file not in the allowed list', () => {
+        expect(isValidLogFile('other.log', allowedFiles)).toBe(false);
+    });
+
+    it('returns false for path traversal attempts', () => {
+        expect(isValidLogFile('../etc/passwd', allowedFiles)).toBe(false);
+        expect(isValidLogFile('/etc/shadow', allowedFiles)).toBe(false);
+        expect(isValidLogFile('../../analysis.log', allowedFiles)).toBe(false);
+    });
+
+    it('returns false for empty input', () => {
+        expect(isValidLogFile('', allowedFiles)).toBe(false);
+    });
+
+    it('returns false for names with special characters', () => {
+        expect(isValidLogFile('file;cmd', allowedFiles)).toBe(false);
+        expect(isValidLogFile('file name.log', allowedFiles)).toBe(false);
+    });
+
+    it('returns false when the sanitized name differs from input', () => {
+        // Even if the basename matches an allowed file, the original must match too
+        expect(isValidLogFile('/some/path/analysis.log', allowedFiles)).toBe(false);
+    });
+
+    it('returns false with empty allowed list', () => {
+        expect(isValidLogFile('analysis.log', [])).toBe(false);
     });
 });
