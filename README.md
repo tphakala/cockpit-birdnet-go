@@ -1,5 +1,10 @@
 # Cockpit BirdNET-Go Plugin
 
+[![CI](https://github.com/tphakala/cockpit-birdnet-go/actions/workflows/ci.yml/badge.svg)](https://github.com/tphakala/cockpit-birdnet-go/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/tphakala/cockpit-birdnet-go/branch/main/graph/badge.svg)](https://codecov.io/gh/tphakala/cockpit-birdnet-go)
+[![License: LGPL-2.1](https://img.shields.io/badge/License-LGPL--2.1-blue.svg)](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/tphakala/cockpit-birdnet-go/badge)](https://scorecard.dev/viewer/?uri=github.com/tphakala/cockpit-birdnet-go)
+
 A [Cockpit](https://cockpit-project.org/) management plugin for [BirdNET-Go](https://github.com/tphakala/birdnet-go), providing a web-based interface to monitor, control, and manage BirdNET-Go installations.
 
 ## Features

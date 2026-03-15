@@ -18,6 +18,7 @@
 /bots
 /cockpit-*.tar.xz
 /cockpit-navigator.spec
+/coverage/
 /dist/
 /package-lock.json
 /pkg/
