@@ -31,71 +31,20 @@ import { SearchInput } from '@patternfly/react-core/dist/esm/components/SearchIn
 
 import cockpit from 'cockpit';
 
+import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStatus, VersionInfo } from './types';
+import {
+    capitalize,
+    filterLogs,
+    formatLogTime,
+    formatUptime,
+    getContainerStatusVariant,
+    getDockerStatusVariant,
+    getLogLevelColor,
+    isBinaryInstallation,
+    supportsAutomaticUpgrade,
+} from './utils';
+
 const _ = cockpit.gettext;
-
-// Helper function to capitalize the first letter of a string
-const capitalize = (str?: string): string => {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-interface LogEntry {
-    time: string;
-    level: string;
-    msg: string;
-    service?: string;
-    [key: string]: unknown;
-}
-
-interface DockerStatus {
-    available: boolean;
-    running: boolean;
-    version?: string;
-}
-
-interface ContainerStatus {
-    exists: boolean;
-    running: boolean;
-    imagePresent: boolean;
-    containerId?: string;
-    status?: string;
-    isCompose?: boolean;
-    composeProject?: string;
-    composeService?: string;
-    composeWorkingDir?: string;
-}
-
-interface SystemdStatus {
-    exists: boolean;
-    running: boolean;
-    enabled: boolean;
-    status?: string;
-}
-
-interface HealthStatus {
-    status: string;
-    version: string;
-    build_date: string;
-    environment: string;
-    database_status: string;
-    database_error?: string;
-    uptime: string;
-    uptime_seconds: number;
-    timestamp: string;
-}
-
-interface VersionInfo {
-    current: string;
-    buildDate: string;
-    latest?: string;
-    latestNightly?: string;
-    nightlyTags?: string[];
-    updateAvailable?: boolean;
-    checkingUpdate?: boolean;
-    updateError?: string;
-    releaseNotes?: string;
-    releaseUrl?: string;
-}
 
 export const Application = () => {
     const [dockerStatus, setDockerStatus] = useState<DockerStatus>({ available: false, running: false });
@@ -685,25 +634,9 @@ export const Application = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Empty dependency array means this runs once on mount
 
-    const getDockerStatusVariant = () => {
-        if (!dockerStatus.available) return 'danger';
-        if (!dockerStatus.running) return 'warning';
-        return 'success';
-    };
+    const dockerStatusVariant = () => getDockerStatusVariant(dockerStatus);
 
-    const getContainerStatusVariant = () => {
-        // Check systemd first
-        if (systemdStatus.exists) {
-            if (systemdStatus.running) return 'success';
-            return 'warning';
-        }
-
-        // Then check Docker
-        if (!containerStatus.imagePresent) return 'warning';
-        if (!containerStatus.exists) return 'info';
-        if (!containerStatus.running) return 'warning';
-        return 'success';
-    };
+    const containerStatusVariant = () => getContainerStatusVariant(systemdStatus, containerStatus);
 
     const getDockerStatusText = () => {
         if (!dockerStatus.available) return _('Docker not available');
@@ -946,116 +879,7 @@ export const Application = () => {
         }
     };
 
-    const formatLogTime = (timestamp: string): string => {
-        const date = new Date(timestamp);
-        return date.toLocaleString();
-    };
-
-    const getLogLevelColor = (level: string): string => {
-        switch (level?.toUpperCase()) {
-            case 'ERROR':
-                return '#c9190b';
-            case 'WARN':
-                return '#f0ab00';
-            case 'INFO':
-                return '#0066cc';
-            case 'DEBUG':
-                return '#6a6e73';
-            default:
-                return '#151515';
-        }
-    };
-
-    // Determine if this is a native binary installation (not Docker)
-    const isBinaryInstallation = () => {
-        // If systemd service exists but no container exists, it's a binary
-        if (systemdStatus.exists && !containerStatus.exists) return true;
-
-        // If BirdNET-Go is running but no container exists, it's a binary
-        if ((containerStatus.running || systemdStatus.running) && !containerStatus.exists) return true;
-
-        return false;
-    };
-
-    // Determine if automatic upgrades are supported
-    const supportsAutomaticUpgrade = () => {
-        // Binary installations don't support automatic upgrades
-        if (isBinaryInstallation()) return false;
-
-        // Docker Compose deployments need manual docker-compose commands
-        if (containerStatus.isCompose) return false;
-
-        // Only standalone Docker containers support automatic upgrades
-        return containerStatus.exists && !containerStatus.isCompose;
-    };
-
-    const formatUptime = (uptimeStr: string): string => {
-        if (!uptimeStr || typeof uptimeStr !== 'string') {
-            return '0s';
-        }
-
-        try {
-            // Handle different uptime formats: "1h30m45s", "45.123s", "123ms", etc.
-            let totalSeconds = 0;
-
-            // Extract hours, minutes, seconds, milliseconds
-            const hoursMatch = uptimeStr.match(/(\d+)h/);
-            const minutesMatch = uptimeStr.match(/(\d+)m/);
-            const secondsMatch = uptimeStr.match(/(\d+(?:\.\d+)?)s/);
-            const millisecondsMatch = uptimeStr.match(/(\d+(?:\.\d+)?)ms/);
-
-            if (hoursMatch) {
-                const hours = parseInt(hoursMatch[1], 10);
-                totalSeconds += Math.min(hours, 8760) * 3600; // Clamp to max 1 year
-            }
-
-            if (minutesMatch) {
-                const minutes = parseInt(minutesMatch[1], 10);
-                totalSeconds += Math.min(minutes, 59) * 60; // Clamp to max 59 minutes
-            }
-
-            if (secondsMatch) {
-                const seconds = parseFloat(secondsMatch[1]);
-                totalSeconds += Math.min(seconds, 59); // Clamp to max 59 seconds
-            }
-
-            if (millisecondsMatch && !secondsMatch) {
-                // Only use milliseconds if no seconds found
-                const ms = parseFloat(millisecondsMatch[1]);
-                totalSeconds += Math.min(ms / 1000, 59); // Convert ms to seconds, clamp to 59s
-            }
-
-            // Convert back to hours, minutes, seconds
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = Math.floor(totalSeconds % 60);
-
-            // Build display string
-            const parts: string[] = [];
-            if (hours > 0) parts.push(`${hours}h`);
-            if (minutes > 0) parts.push(`${minutes}m`);
-            if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
-
-            return parts.join(' ');
-        } catch (error) {
-            console.warn('Error parsing uptime:', uptimeStr, error);
-            return '0s';
-        }
-    };
-
-    const filteredLogs = appLogs.filter(log => {
-        // Filter by log level
-        if (logLevelFilter !== 'all' && log.level?.toUpperCase() !== logLevelFilter.toUpperCase()) {
-            return false;
-        }
-
-        // Filter by search text
-        if (logSearchText && !JSON.stringify(log).toLowerCase().includes(logSearchText.toLowerCase())) {
-            return false;
-        }
-
-        return true;
-    });
+    const filteredLogs = filterLogs(appLogs, logLevelFilter, logSearchText);
 
     return (
         <Page className="no-masthead-sidebar">
@@ -1200,7 +1024,7 @@ export const Application = () => {
                         <Card>
                             <CardTitle>BirdNET-Go Status</CardTitle>
                             <CardBody>
-                                <Alert variant={getContainerStatusVariant()} title={getContainerStatusText()} />
+                                <Alert variant={containerStatusVariant()} title={getContainerStatusText()} />
                                 <div className="pf-v6-u-display-grid u-grid-template-columns-1fr-1fr pf-v6-u-gap-md pf-v6-u-mt-md">
                                     {/* Left Column */}
                                     <div>
@@ -1468,7 +1292,7 @@ export const Application = () => {
                                             </Button>
                                             {versionInfo.current?.includes('nightly') &&
                                                 versionInfo.updateAvailable &&
-                                                supportsAutomaticUpgrade() && (
+                                                supportsAutomaticUpgrade(systemdStatus, containerStatus) && (
                                                     <Button
                                                         variant="primary"
                                                         onClick={upgradeBirdNetGo}
@@ -1482,7 +1306,7 @@ export const Application = () => {
                                                 )}
                                             {versionInfo.updateAvailable &&
                                                 !versionInfo.current?.includes('nightly') &&
-                                                supportsAutomaticUpgrade() && (
+                                                supportsAutomaticUpgrade(systemdStatus, containerStatus) && (
                                                     <Button
                                                         variant="primary"
                                                         onClick={upgradeBirdNetGo}
@@ -1493,19 +1317,20 @@ export const Application = () => {
                                                     </Button>
                                                 )}
                                         </Flex>
-                                        {isBinaryInstallation() && versionInfo.updateAvailable && (
-                                            <Alert
-                                                variant="info"
-                                                title="Manual update required for binary installations"
-                                                isInline
-                                                isPlain
-                                                className="pf-v6-u-mt-md"
-                                            >
-                                                Automatic upgrades are only available for standalone Docker
-                                                installations. Please download and install the new binary manually from
-                                                the GitHub releases page.
-                                            </Alert>
-                                        )}
+                                        {isBinaryInstallation(systemdStatus, containerStatus) &&
+                                            versionInfo.updateAvailable && (
+                                                <Alert
+                                                    variant="info"
+                                                    title="Manual update required for binary installations"
+                                                    isInline
+                                                    isPlain
+                                                    className="pf-v6-u-mt-md"
+                                                >
+                                                    Automatic upgrades are only available for standalone Docker
+                                                    installations. Please download and install the new binary manually
+                                                    from the GitHub releases page.
+                                                </Alert>
+                                            )}
                                         {containerStatus.isCompose && versionInfo.updateAvailable && (
                                             <Alert
                                                 variant="info"
@@ -1556,7 +1381,7 @@ export const Application = () => {
                         <Card>
                             <CardTitle>Docker Status</CardTitle>
                             <CardBody>
-                                <Alert variant={getDockerStatusVariant()} title={getDockerStatusText()} />
+                                <Alert variant={dockerStatusVariant()} title={getDockerStatusText()} />
                                 {dockerStatus.version && (
                                     <p>
                                         <strong>Version:</strong> {dockerStatus.version}

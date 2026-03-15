@@ -41,5 +41,14 @@ jobs:
       - name: Lint (Stylelint)
         run: npm run stylelint
 
+      - name: Test with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+
       - name: Build
         run: npm run build
