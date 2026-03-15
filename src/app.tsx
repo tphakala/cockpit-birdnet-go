@@ -47,6 +47,17 @@ import {
 
 const _ = cockpit.gettext;
 
+interface DockerInspectResult {
+    Name: string;
+    HostConfig?: {
+        PortBindings?: Record<string, { HostPort: string }[]>;
+    };
+    Mounts?: { Type: string; Source: string; Destination: string }[];
+    Config?: {
+        Env?: string[];
+    };
+}
+
 export const Application = () => {
     const [dockerStatus, setDockerStatus] = useState<DockerStatus>({ available: false, running: false });
     const [containerStatus, setContainerStatus] = useState<ContainerStatus>({
@@ -523,7 +534,18 @@ export const Application = () => {
                         {},
                         'GitHub latest release'
                     );
-                    const latestStable = release.tag_name?.replace('v', '');
+
+                    // If parsing failed or returned an empty object, treat as an error
+                    if (!release.tag_name) {
+                        setVersionInfo(prev => ({
+                            ...prev,
+                            checkingUpdate: false,
+                            updateError: 'Failed to check for updates: invalid API response',
+                        }));
+                        return;
+                    }
+
+                    const latestStable = release.tag_name.replace('v', '');
 
                     // Compare semantic versions for stable releases
                     const parseVersion = (v: string) => {
@@ -544,11 +566,11 @@ export const Application = () => {
 
                     setVersionInfo(prev => ({
                         ...prev,
-                        ...(latestStable !== undefined && { latest: latestStable }),
+                        ...(latestStable != null && { latest: latestStable }),
                         updateAvailable,
                         checkingUpdate: false,
-                        ...(release.body !== undefined && { releaseNotes: release.body }),
-                        ...(release.html_url !== undefined && { releaseUrl: release.html_url }),
+                        ...(release.body != null && { releaseNotes: release.body }),
+                        ...(release.html_url != null && { releaseUrl: release.html_url }),
                     }));
                 }
             }
@@ -834,16 +856,6 @@ export const Application = () => {
 
                 // Get current container configuration
                 const configJson = await cockpit.spawn(['docker', 'inspect', containerStatus.containerId]);
-                interface DockerInspectResult {
-                    Name: string;
-                    HostConfig?: {
-                        PortBindings?: Record<string, { HostPort: string }[]>;
-                    };
-                    Mounts?: { Type: string; Source: string; Destination: string }[];
-                    Config?: {
-                        Env?: string[];
-                    };
-                }
                 const inspectResult = safeJsonParse<DockerInspectResult[]>(configJson, [], 'docker inspect output');
                 if (!inspectResult.length) {
                     throw new Error('Failed to parse container configuration from docker inspect');

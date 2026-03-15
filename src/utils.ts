@@ -24,6 +24,9 @@ import type { ContainerStatus, DockerStatus, LogEntry, SystemdStatus } from './t
  * Logs a warning with context about what failed to parse.
  */
 export const safeJsonParse = <T>(json: string, fallback: T, context?: string): T => {
+    if (!json) {
+        return fallback;
+    }
     try {
         return JSON.parse(json) as T;
     } catch (error) {
