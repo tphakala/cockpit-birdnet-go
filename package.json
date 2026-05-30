@@ -51,10 +51,10 @@
     "vitest": "^4.1.0"
   },
   "dependencies": {
-    "@patternfly/patternfly": "6.4.0",
-    "@patternfly/react-core": "6.4.1",
-    "@patternfly/react-icons": "6.4.0",
-    "@patternfly/react-styles": "6.4.0",
+    "@patternfly/patternfly": "6.5.2",
+    "@patternfly/react-core": "6.5.1",
+    "@patternfly/react-icons": "6.5.1",
+    "@patternfly/react-styles": "6.5.1",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   }
