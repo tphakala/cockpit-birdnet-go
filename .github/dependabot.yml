@@ -44,6 +44,13 @@ updates:
       - dependency-name: "*react*"
         update-types: ["version-update:semver-major"]
 
+      # eslint-plugin-react (7.37.5, latest) supports eslint only up to ^9.7. ESLint 10
+      # removed the legacy context.getFilename() API the plugin relies on, so bumping
+      # eslint to 10 breaks linting (TypeError loading react rules). Hold eslint on 9.x
+      # until eslint-plugin-react ships ESLint 10 support.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: "github-actions"
     directory: "/"
     open-pull-requests-limit: 3

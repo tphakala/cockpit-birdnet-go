@@ -1,8 +1,10 @@
 name: tasks-container-update
+# Scheduled trigger disabled for the same reason as cockpit-lib-update: PRs opened
+# with the default GITHUB_TOKEN do not trigger CI, so they cannot satisfy branch
+# protection and would accumulate as unmergeable PRs. Run on demand when needed.
 on:
-  schedule:
-    - cron: '0 2 * * 1'
-  # can be run manually on https://github.com/cockpit-project/starter-kit/actions
+  # schedule:
+  #   - cron: '0 2 * * 1'
   workflow_dispatch:
 jobs:
   tasks-container-update:

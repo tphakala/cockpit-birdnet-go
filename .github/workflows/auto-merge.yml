@@ -27,17 +27,8 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-  auto-merge-bots:
-    name: Auto-merge bot PRs
-    runs-on: ubuntu-latest
-    if: >-
-      github.actor == 'github-actions[bot]' && (
-        startsWith(github.event.pull_request.title, 'cockpit-lib-update') ||
-        startsWith(github.event.pull_request.title, 'tasks-container-update')
-      )
-    steps:
-      - name: Enable auto-merge
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "$PR_URL"
+  # Note: there is intentionally no job for github-actions[bot] PRs here. Those PRs
+  # (cockpit-lib-update, tasks-container-update) are created with the default
+  # GITHUB_TOKEN, which by design does not trigger pull_request_target, so such a
+  # job would never run. Those workflows are now manual-dispatch only and merged by
+  # hand instead.

@@ -1,8 +1,13 @@
 name: cockpit-lib-update
+# The scheduled trigger is intentionally disabled. This job opens its PR with the
+# default GITHUB_TOKEN, and GitHub does not let GITHUB_TOKEN-created PRs trigger
+# other workflows. CI therefore never runs on these PRs, so they can never satisfy
+# branch protection (required status checks plus a review) and merge on their own.
+# Left on a schedule they just pile up, one unmergeable PR every week. Run this on
+# demand instead (for example before a release), then review and merge the PR.
 on:
-  schedule:
-    - cron: '0 2 * * 4'
-  # can be run manually on https://github.com/cockpit-project/starter-kit/actions
+  # schedule:
+  #   - cron: '0 2 * * 4'
   workflow_dispatch:
 jobs:
   cockpit-lib-update:
