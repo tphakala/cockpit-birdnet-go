@@ -439,7 +439,11 @@ export const Application = () => {
     }, [selectedLogFile, logFiles]);
 
     const checkForUpdates = useCallback(async () => {
-        setVersionInfo(prev => ({ ...prev, checkingUpdate: true, updateError: undefined }));
+        setVersionInfo(prev => {
+            const next = { ...prev, checkingUpdate: true };
+            delete next.updateError;
+            return next;
+        });
 
         try {
             const currentVersion = versionInfoRef.current.current?.replace('v', '');
