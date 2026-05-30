@@ -112,7 +112,9 @@ export const Application = () => {
 
     // Use ref to avoid infinite re-renders while accessing current versionInfo
     const versionInfoRef = useRef(versionInfo);
-    versionInfoRef.current = versionInfo;
+    useEffect(() => {
+        versionInfoRef.current = versionInfo;
+    }, [versionInfo]);
 
     const checkDockerStatus = async () => {
         try {
@@ -235,8 +237,8 @@ export const Application = () => {
                 // Be specific to avoid matching VSCode dev containers
                 const birdnetContainer = containerLines.find(line => {
                     const parts = line.split('|');
-                    const image = parts[1];
-                    const name = parts[3];
+                    const image = parts[1] || '';
+                    const name = parts[3] || '';
 
                     // Exclude VSCode containers (they start with vsc-)
                     if (image.startsWith('vsc-')) {
@@ -250,7 +252,7 @@ export const Application = () => {
                 if (birdnetContainer) {
                     const parts = birdnetContainer.split('|');
                     const status = parts[2];
-                    const labels = parts[4] || '';
+                    const labels = parts.slice(4).join('|') || '';
 
                     // Parse Docker Compose labels
                     let isCompose = false;
@@ -377,11 +379,16 @@ export const Application = () => {
                 if (data) {
                     setHealthStatus(data);
                     // Update version info
-                    setVersionInfo(prev => ({
-                        ...prev,
-                        current: data.version,
-                        buildDate: data.build_date,
-                    }));
+                    setVersionInfo(prev => {
+                        if (prev.current === data.version && prev.buildDate === data.build_date) {
+                            return prev;
+                        }
+                        return {
+                            ...prev,
+                            current: data.version,
+                            buildDate: data.build_date,
+                        };
+                    });
                 } else {
                     console.warn('Health check returned invalid JSON, clearing health status');
                     setHealthStatus(null);
@@ -432,7 +439,7 @@ export const Application = () => {
     }, [selectedLogFile, logFiles]);
 
     const checkForUpdates = useCallback(async () => {
-        setVersionInfo(prev => ({ ...prev, checkingUpdate: true }));
+        setVersionInfo(prev => ({ ...prev, checkingUpdate: true, updateError: undefined }));
 
         try {
             const currentVersion = versionInfoRef.current.current?.replace('v', '');
@@ -595,12 +602,20 @@ export const Application = () => {
     }, [fetchHealthStatus]);
 
     useEffect(() => {
-        refreshStatus();
+        Promise.resolve().then(() => {
+            refreshStatus();
+        }).catch(err => {
+            console.error('Error in refreshStatus effect:', err);
+        });
     }, [refreshStatus]);
 
     // Fetch logs when container status changes
     useEffect(() => {
-        fetchLogs();
+        Promise.resolve().then(() => {
+            fetchLogs();
+        }).catch(err => {
+            console.error('Error in fetchLogs effect:', err);
+        });
     }, [fetchLogs]);
 
     // Auto-refresh logs every 5 seconds if container is running
@@ -616,14 +631,22 @@ export const Application = () => {
     // Fetch log files when container is running
     useEffect(() => {
         if (containerStatus.running) {
-            fetchLogFiles();
+            Promise.resolve().then(() => {
+                fetchLogFiles();
+            }).catch(err => {
+                console.error('Error in fetchLogFiles effect:', err);
+            });
         }
     }, [containerStatus.running, fetchLogFiles]);
 
     // Fetch health status when container is running
     useEffect(() => {
         if (containerStatus.running) {
-            fetchHealthStatus();
+            Promise.resolve().then(() => {
+                fetchHealthStatus();
+            }).catch(err => {
+                console.error('Error in fetchHealthStatus effect:', err);
+            });
         }
     }, [containerStatus.running, fetchHealthStatus]);
 
@@ -640,7 +663,11 @@ export const Application = () => {
     // Fetch app logs when selected log file changes
     useEffect(() => {
         if (selectedLogFile && containerStatus.running) {
-            fetchAppLogs();
+            Promise.resolve().then(() => {
+                fetchAppLogs();
+            }).catch(err => {
+                console.error('Error in fetchAppLogs effect:', err);
+            });
         }
     }, [selectedLogFile, containerStatus.running, fetchAppLogs]);
 
@@ -654,26 +681,21 @@ export const Application = () => {
         }
     }, [containerStatus.running, selectedLogFile, fetchAppLogs]);
 
-    // Check for updates when version info is available, and also on page load
+    // Check for updates when version info is available
     useEffect(() => {
-        const info = versionInfoRef.current;
-        if (info.current && !info.latest && !info.checkingUpdate) {
-            checkForUpdates();
-        }
-    }, [checkForUpdates]);
-
-    // Check for updates immediately on page load
-    useEffect(() => {
-        // Run update check after initial status refresh is complete
-        const timer = setTimeout(() => {
-            if (!versionInfo.checkingUpdate && !versionInfo.latest) {
+        if (
+            versionInfo.current &&
+            !versionInfo.latest &&
+            !versionInfo.checkingUpdate &&
+            !versionInfo.updateError
+        ) {
+            Promise.resolve().then(() => {
                 checkForUpdates();
-            }
-        }, 2000); // Wait 2 seconds for initial health check to potentially complete
-
-        return () => clearTimeout(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Empty dependency array means this runs once on mount
+            }).catch(err => {
+                console.error('Error in checkForUpdates effect:', err);
+            });
+        }
+    }, [versionInfo, checkForUpdates]);
 
     const dockerStatusVariant = () => getDockerStatusVariant(dockerStatus);
 
@@ -872,7 +894,7 @@ export const Application = () => {
                     'run',
                     '-d',
                     '--name',
-                    config.Name.replace('/', ''),
+                    (config.Name || '').replace('/', ''),
                     '--restart',
                     'unless-stopped',
                 ];
