@@ -3,13 +3,15 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-    test: {
-        environment: 'node',
+    resolve: {
         alias: {
             // `cockpit` is provided by the Cockpit host at runtime; alias it to
             // a stub so component tests can import modules that use it.
             cockpit: fileURLToPath(new URL('./src/__mocks__/cockpit.ts', import.meta.url)),
         },
+    },
+    test: {
+        environment: 'node',
         server: {
             deps: {
                 // PatternFly components import .css files. Inline them so vite
