@@ -40,7 +40,10 @@ updates:
       - dependency-name: "@patternfly/*"
         update-types: ["version-update:semver-major"]
 
-      # PF5 requires React 18
+      # React major bumps are reviewed manually. PatternFly 6 supports React
+      # 17/18/19, so this is not a hard compatibility cap; we just want major
+      # React upgrades to go through a deliberate PR rather than land
+      # automatically. Currently on React 19.
       - dependency-name: "*react*"
         update-types: ["version-update:semver-major"]
 
