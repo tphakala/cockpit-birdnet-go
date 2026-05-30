@@ -6,13 +6,13 @@
 // `cockpit` import to this stub (see vitest.config.ts). It only needs enough
 // surface for <Application/> to mount.
 
-const pending = <T>(): Promise<T> => new Promise<T>(() => undefined);
-
 const cockpit = {
-    // The status probes `await cockpit.spawn(...)`. Returning a promise that
-    // never resolves lets the component reach its initial synchronous render
-    // without triggering post-render state updates (no act() warnings).
-    spawn: () => pending<string>(),
+    // The status probes `await cockpit.spawn(...)`. Resolving to an empty
+    // string lets the component's effects settle into their default ("not
+    // available") states, so tests exercise the full render path rather than
+    // just the initial synchronous shell. Tests await the settled render with
+    // async queries (findBy*), which keeps React state updates wrapped in act.
+    spawn: () => Promise.resolve(''),
     gettext: (text: string): string => text,
 };
 
