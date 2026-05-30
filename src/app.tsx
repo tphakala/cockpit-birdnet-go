@@ -602,20 +602,24 @@ export const Application = () => {
     }, [fetchHealthStatus]);
 
     useEffect(() => {
-        Promise.resolve().then(() => {
-            refreshStatus();
-        }).catch(err => {
-            console.error('Error in refreshStatus effect:', err);
-        });
+        Promise.resolve()
+            .then(() => {
+                refreshStatus();
+            })
+            .catch(err => {
+                console.error('Error in refreshStatus effect:', err);
+            });
     }, [refreshStatus]);
 
     // Fetch logs when container status changes
     useEffect(() => {
-        Promise.resolve().then(() => {
-            fetchLogs();
-        }).catch(err => {
-            console.error('Error in fetchLogs effect:', err);
-        });
+        Promise.resolve()
+            .then(() => {
+                fetchLogs();
+            })
+            .catch(err => {
+                console.error('Error in fetchLogs effect:', err);
+            });
     }, [fetchLogs]);
 
     // Auto-refresh logs every 5 seconds if container is running
@@ -631,22 +635,26 @@ export const Application = () => {
     // Fetch log files when container is running
     useEffect(() => {
         if (containerStatus.running) {
-            Promise.resolve().then(() => {
-                fetchLogFiles();
-            }).catch(err => {
-                console.error('Error in fetchLogFiles effect:', err);
-            });
+            Promise.resolve()
+                .then(() => {
+                    fetchLogFiles();
+                })
+                .catch(err => {
+                    console.error('Error in fetchLogFiles effect:', err);
+                });
         }
     }, [containerStatus.running, fetchLogFiles]);
 
     // Fetch health status when container is running
     useEffect(() => {
         if (containerStatus.running) {
-            Promise.resolve().then(() => {
-                fetchHealthStatus();
-            }).catch(err => {
-                console.error('Error in fetchHealthStatus effect:', err);
-            });
+            Promise.resolve()
+                .then(() => {
+                    fetchHealthStatus();
+                })
+                .catch(err => {
+                    console.error('Error in fetchHealthStatus effect:', err);
+                });
         }
     }, [containerStatus.running, fetchHealthStatus]);
 
@@ -663,11 +671,13 @@ export const Application = () => {
     // Fetch app logs when selected log file changes
     useEffect(() => {
         if (selectedLogFile && containerStatus.running) {
-            Promise.resolve().then(() => {
-                fetchAppLogs();
-            }).catch(err => {
-                console.error('Error in fetchAppLogs effect:', err);
-            });
+            Promise.resolve()
+                .then(() => {
+                    fetchAppLogs();
+                })
+                .catch(err => {
+                    console.error('Error in fetchAppLogs effect:', err);
+                });
         }
     }, [selectedLogFile, containerStatus.running, fetchAppLogs]);
 
@@ -683,17 +693,14 @@ export const Application = () => {
 
     // Check for updates when version info is available
     useEffect(() => {
-        if (
-            versionInfo.current &&
-            !versionInfo.latest &&
-            !versionInfo.checkingUpdate &&
-            !versionInfo.updateError
-        ) {
-            Promise.resolve().then(() => {
-                checkForUpdates();
-            }).catch(err => {
-                console.error('Error in checkForUpdates effect:', err);
-            });
+        if (versionInfo.current && !versionInfo.latest && !versionInfo.checkingUpdate && !versionInfo.updateError) {
+            Promise.resolve()
+                .then(() => {
+                    checkForUpdates();
+                })
+                .catch(err => {
+                    console.error('Error in checkForUpdates effect:', err);
+                });
         }
     }, [versionInfo, checkForUpdates]);
 
