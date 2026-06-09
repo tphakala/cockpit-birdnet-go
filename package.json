@@ -42,7 +42,7 @@
     "jed": "1.1.1",
     "jsdom": "^29.1.1",
     "neostandard": "^0.13.0",
-    "prettier": "^3.6.2",
+    "prettier": "^3.8.4",
     "qunit": "2.26.0",
     "stylelint": "^17.13.0",
     "stylelint-config-recommended-scss": "17.0.1",
