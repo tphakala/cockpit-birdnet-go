@@ -51,7 +51,7 @@
     "stylelint-formatter-pretty": "4.0.1",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.61.1",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   },
   "dependencies": {
     "@patternfly/patternfly": "6.5.2",
