@@ -15,8 +15,8 @@
   <launchable type="cockpit-manifest">birdnet-go</launchable>
   <url type="homepage">https://github.com/tphakala/cockpit-birdnet-go</url>
   <url type="bugtracker">https://github.com/tphakala/cockpit-birdnet-go/issues</url>
-  <update_contact>tphakala@gmail.com</update_contact>
+  <update_contact>tomi.hakala@pobox.fi</update_contact>
   <developer id="com.github.tphakala">
-    <name>Tommi Häkkinen</name>
+    <name>Tomi P. Hakala</name>
   </developer>
 </component>

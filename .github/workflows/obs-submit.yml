@@ -65,9 +65,13 @@ jobs:
 
           tarball=$(ls cockpit-birdnet-go-*.tar.xz | grep -v -- '-node-')
           node_tarball=$(ls cockpit-birdnet-go-node-*.tar.xz)
+          # actual checked-out ref (tag on release/dispatch, else short SHA);
+          # github.ref_name would be the branch name on workflow_dispatch
+          ref=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
           echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
           echo "node_tarball=$node_tarball" >> "$GITHUB_OUTPUT"
-          echo "Built $tarball and $node_tarball"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Built $tarball and $node_tarball at $ref"
 
       - name: Configure osc
         run: |
@@ -114,7 +118,7 @@ jobs:
 
           osc addremove
           osc diff || true
-          osc commit -m "Update to ${{ github.ref_name }} from GitHub release"
+          osc commit -m "Update to ${{ steps.build.outputs.ref }} from GitHub release"
 
       - name: Show build results
         env:

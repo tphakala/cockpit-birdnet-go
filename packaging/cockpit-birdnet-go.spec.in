@@ -36,7 +36,10 @@ container management, monitoring, and configuration capabilities
 through the Cockpit web interface.
 
 %prep
-%autosetup -n %{name} -a 1
+# tarball unpacks to %%{name}-%%{version}/ (make's --transform), which is the
+# %%autosetup default; do not override -n to %%{name} or %%prep cd's into the
+# wrong directory and the build fails.
+%autosetup -a 1
 # ignore pre-built bundle in release tarball and rebuild it
 # but keep it in RHEL/CentOS-8/9, as that has a too old nodejs
 %if ! 0%{?rhel} || 0%{?rhel} >= 10
