@@ -156,8 +156,11 @@ rpm: $(TARFILE) $(NODE_CACHE) $(SPEC)
 	  --define "_buildrootdir `pwd`/build" \
 	  $(SPEC)
 	find `pwd`/output -name '*.rpm' -printf '%f\n' -exec mv {} . \;
-	rm -r "`pwd`/rpmbuild"
-	rm -r "`pwd`/output" "`pwd`/build"
+	# -f: newer rpm (4.20+, e.g. Fedora 40+) ignores _buildrootdir and keeps the
+	# buildroot under _builddir, so `pwd`/build is never created; without -f the
+	# cleanup fails and `make rpm` exits non-zero after a successful build.
+	rm -rf "`pwd`/rpmbuild"
+	rm -rf "`pwd`/output" "`pwd`/build"
 
 # build a VM with locally built distro pkgs installed
 # disable networking, VM images have mock/pbuilder with the common build dependencies pre-installed
