@@ -23,7 +23,7 @@ import { getDriver as realGetDriver } from './driver';
 import { ensurePrivilegedBind as realEnsure } from './privileged';
 import { exec } from './exec';
 import type { Deployment } from './types';
-import type { DeploymentDriver } from './driver';
+import type { DeploymentDriver, PortChangeResult } from './driver';
 
 export type ApplyResult =
     | { kind: 'applied'; hostPort: number }
@@ -91,8 +91,9 @@ export const safeSetPort = async (
     }
 
     const snapshot = deployment.hostPort;
+    let applied: PortChangeResult;
     try {
-        await driver.setHostPort(newPort);
+        applied = await driver.setHostPort(newPort);
     } catch (e) {
         // recreateContainer restores the original container on a failed run, so the
         // service is already back on its old port; just report the failure.
@@ -100,6 +101,11 @@ export const safeSetPort = async (
             kind: 'rolled-back',
             reason: `failed to apply port ${newPort}: ${(e as Error).message}; restored ${snapshot}`,
         };
+    }
+
+    // The driver could not safely recreate the container; nothing was changed.
+    if (applied.kind === 'guided-manual') {
+        return { kind: 'guided-manual', instructions: applied.instructions };
     }
 
     if (await deps.pollHealth(hostname, newPort)) return { kind: 'applied', hostPort: newPort };

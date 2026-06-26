@@ -151,4 +151,14 @@ describe('safeSetPort', () => {
         expect(r.kind).toBe('rolled-back');
         if (r.kind === 'rolled-back') expect(r.reason).toContain('manual steps');
     });
+
+    it('returns guided-manual without polling health when an auto driver cannot reproduce the container', async () => {
+        const pollHealth = vi.fn(async () => true);
+        const driver = mkDriver({
+            setHostPort: vi.fn(async () => ({ kind: 'guided-manual' as const, instructions: 'recreate by hand' })),
+        });
+        const r = await safeSetPort(driver, standalone, 443, 'h', mkDeps({ pollHealth }));
+        expect(r).toEqual({ kind: 'guided-manual', instructions: 'recreate by hand' });
+        expect(pollHealth).not.toHaveBeenCalled();
+    });
 });

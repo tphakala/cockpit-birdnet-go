@@ -64,10 +64,13 @@ export class DockerDriver implements DeploymentDriver {
 
     async setHostPort(port: number): Promise<PortChangeResult> {
         if (this.d.kind === 'docker-standalone' && this.d.containerId) {
-            await recreateContainer(this.bin(), this.d.containerId, {
+            const result = await recreateContainer(this.bin(), this.d.containerId, {
                 hostPort: port,
                 internalPort: this.d.internalPort,
             });
+            if (result.kind === 'unsupported') {
+                return { kind: 'guided-manual', instructions: result.instructions };
+            }
             return { kind: 'applied' };
         }
         if (this.d.kind === 'docker-compose') {

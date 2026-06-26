@@ -50,6 +50,7 @@ import {
 import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStatus, VersionInfo } from './types';
 import { detectDeployment } from './deployment/detect';
 import { getDriver } from './deployment/driver';
+import { recreateContainer } from './deployment/recreate';
 import type { Deployment } from './deployment/types';
 import { PortCard } from './components/PortCard';
 import {
@@ -67,17 +68,6 @@ import {
 } from './utils';
 
 const _ = cockpit.gettext;
-
-interface DockerInspectResult {
-    Name: string;
-    HostConfig?: {
-        PortBindings?: Record<string, { HostPort: string }[]>;
-    };
-    Mounts?: { Type: string; Source: string; Destination: string }[];
-    Config?: {
-        Env?: string[];
-    };
-}
 
 export const Application = () => {
     const [deployment, setDeployment] = useState<Deployment>({
@@ -663,66 +653,17 @@ export const Application = () => {
                 // The service will pull and run the latest image
                 await cockpit.spawn(['systemctl', 'restart', SERVICE_NAME], { superuser: 'try' });
             } else if (containerStatus.containerId) {
-                // For standalone Docker container
-                // Stop current container
-                await cockpit.spawn(['docker', 'stop', containerStatus.containerId]);
-
-                // Get current container configuration
-                const configJson = await cockpit.spawn(['docker', 'inspect', containerStatus.containerId]);
-                const inspectResult = safeJsonParse<DockerInspectResult[]>(configJson, [], 'docker inspect output');
-                if (!inspectResult.length) {
-                    throw new Error('Failed to parse container configuration from docker inspect');
+                // Recreate the standalone container on the new image, reproducing its
+                // device/network/restart/mount flags. If the container carries settings
+                // that cannot be safely reproduced, leave it running and guide the user.
+                const result = await recreateContainer('docker', containerStatus.containerId, {
+                    image: imageName,
+                    internalPort: 8080,
+                });
+                if (result.kind === 'unsupported') {
+                    alert(`Could not upgrade automatically. ${result.instructions}`);
+                    return;
                 }
-                const config = inspectResult[0];
-
-                // Remove old container
-                await cockpit.spawn(['docker', 'rm', containerStatus.containerId]);
-
-                // Create new container with same configuration but new image
-                const createArgs = [
-                    'docker',
-                    'run',
-                    '-d',
-                    '--name',
-                    (config.Name || '').replace('/', ''),
-                    '--restart',
-                    'unless-stopped',
-                ];
-
-                // Preserve port mappings
-                if (config.HostConfig?.PortBindings) {
-                    Object.entries(config.HostConfig.PortBindings).forEach(([containerPort, hostPorts]) => {
-                        if (Array.isArray(hostPorts)) {
-                            hostPorts.forEach((binding: { HostPort: string }) => {
-                                createArgs.push('-p', `${binding.HostPort}:${containerPort.split('/')[0]}`);
-                            });
-                        }
-                    });
-                }
-
-                // Preserve volume mounts
-                if (config.Mounts) {
-                    config.Mounts.forEach((mount: { Type: string; Source: string; Destination: string }) => {
-                        if (mount.Type === 'bind') {
-                            createArgs.push('-v', `${mount.Source}:${mount.Destination}`);
-                        }
-                    });
-                }
-
-                // Preserve environment variables
-                if (config.Config?.Env) {
-                    config.Config.Env.forEach((env: string) => {
-                        // Skip PATH and other default envs
-                        if (!env.startsWith('PATH=') && !env.startsWith('HOME=')) {
-                            createArgs.push('-e', env);
-                        }
-                    });
-                }
-
-                createArgs.push(imageName);
-
-                // Create and start new container
-                await cockpit.spawn(createArgs);
             }
 
             // Refresh status after upgrade
