@@ -268,6 +268,8 @@ describe('findUnreproducible', () => {
         ['group-add', { HostConfig: { GroupAdd: ['audio'] } }],
         ['extra-hosts', { HostConfig: { ExtraHosts: ['db:1.2.3.4'] } }],
         ['dns', { HostConfig: { Dns: ['1.1.1.1'] } }],
+        ['dns-search', { HostConfig: { DnsSearch: ['example.com'] } }],
+        ['dns-options', { HostConfig: { DnsOptions: ['ndots:2'] } }],
         ['security-opt', { HostConfig: { SecurityOpt: ['label=disable'] } }],
         ['device-cgroup-rules', { HostConfig: { DeviceCgroupRules: ['c 1:3 rwm'] } }],
         ['device-requests (gpu)', { HostConfig: { DeviceRequests: [{}] } }],

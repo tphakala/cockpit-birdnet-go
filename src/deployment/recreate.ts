@@ -41,6 +41,8 @@ export interface DockerInspect {
         GroupAdd?: string[] | null;
         ExtraHosts?: string[] | null;
         Dns?: string[] | null;
+        DnsSearch?: string[] | null;
+        DnsOptions?: string[] | null;
         SecurityOpt?: string[] | null;
         DeviceCgroupRules?: string[] | null;
         DeviceRequests?: unknown[] | null;
@@ -71,6 +73,9 @@ export const buildRunArgs = (bin: string, inspect: DockerInspect, opts: Recreate
     const name = (inspect.Name || '').replace('/', '');
     const args = [bin, 'run', '-d', '--name', name];
 
+    // Absent or empty policy name defaults to unless-stopped (preserves prior behavior;
+    // the installer always sets unless-stopped). An explicit 'no' emits nothing, which is
+    // docker's own default. The two "no restart" encodings are intentionally distinct.
     // Restart policy: preserve the real value. Default to unless-stopped only when
     // inspect carries no policy (keeps prior behavior and never drops restart by omission).
     const policy = inspect.HostConfig?.RestartPolicy;
@@ -156,11 +161,20 @@ export const findUnreproducible = (inspect: DockerInspect, opts: RecreateOptions
     if (hc.GroupAdd?.length) reasons.push('supplementary groups (--group-add)');
     if (hc.ExtraHosts?.length) reasons.push('extra hosts (--add-host)');
     if (hc.Dns?.length) reasons.push('custom DNS servers (--dns)');
+    if (hc.DnsSearch?.length) reasons.push('custom DNS search domains (--dns-search)');
+    if (hc.DnsOptions?.length) reasons.push('custom DNS options (--dns-option)');
     if (hc.SecurityOpt?.length) reasons.push('security options (--security-opt)');
     if (hc.DeviceCgroupRules?.length) reasons.push('device cgroup rules');
     if (hc.DeviceRequests?.length) reasons.push('device requests such as GPUs (--gpus)');
+    // Note for the future podman migration: podman's default runtime is crun/oci, not
+    // runc, so this check will need a runtime allowlist before podman containers reach it.
     if (hc.Runtime && hc.Runtime !== 'runc') reasons.push(`a custom runtime (${hc.Runtime})`);
 
+    // Config.User reflects a runtime --user OR an image-baked USER directive (inspect
+    // cannot tell them apart). Safe today because the BirdNET-Go image runs as root and
+    // drops privileges via BIRDNET_UID/GID env, so this is empty for a normal install.
+    // If the image ever bakes a USER, this would over-trigger guided-manual (safe, not a
+    // silent drop).
     const user = inspect.Config?.User;
     if (user && user !== '') reasons.push(`a custom user (--user ${user})`);
 
