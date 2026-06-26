@@ -105,4 +105,40 @@ describe('safeSetPort', () => {
         expect(checkPortAvailable).not.toHaveBeenCalled(); // same as current port, skip the check
         expect(r.kind).toBe('applied');
     });
+
+    it('fails precheck when the deployment cannot change its port', async () => {
+        const driver = mkDriver({
+            getCapabilities: () => ({
+                canChangePort: false,
+                portChangeMode: 'auto',
+                privilegedPortStrategy: 'docker-root',
+            }),
+        });
+        const r = await safeSetPort(driver, standalone, 9000, 'h', mkDeps());
+        expect(r.kind).toBe('precheck-failed');
+    });
+
+    it('passes through an applied result from a guided-manual driver', async () => {
+        const driver = mkDriver({
+            getCapabilities: () => ({
+                canChangePort: true,
+                portChangeMode: 'guided-manual',
+                privilegedPortStrategy: 'setcap',
+            }),
+            setHostPort: vi.fn(async () => ({ kind: 'applied' as const })),
+        });
+        const r = await safeSetPort(driver, standalone, 443, 'h', mkDeps());
+        expect(r).toEqual({ kind: 'applied', hostPort: 443 });
+    });
+
+    it('returns rolled-back (not a thrown error) when the rollback itself fails', async () => {
+        const failingRollbackDriver = mkDriver({
+            setHostPort: vi.fn(async () => {
+                throw new Error('rollback boom');
+            }),
+        });
+        const deps = mkDeps({ pollHealth: vi.fn(async () => false), getDriver: vi.fn(() => failingRollbackDriver) });
+        const r = await safeSetPort(mkDriver(), standalone, 9000, 'h', deps);
+        expect(r.kind).toBe('rolled-back');
+    });
 });
