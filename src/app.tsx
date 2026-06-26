@@ -38,7 +38,6 @@ import {
     DEFAULT_CONFIG_DIR,
     DEFAULT_DATA_DIR,
     DEFAULT_LOG_DIR,
-    DOCKER_IMAGE,
     getHealthUrl,
     getImageRef,
     getWebInterfaceUrl,
@@ -49,6 +48,9 @@ import {
     SERVICE_NAME,
 } from './config';
 import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStatus, VersionInfo } from './types';
+import { detectDeployment } from './deployment/detect';
+import { getDriver } from './deployment/driver';
+import type { Deployment } from './deployment/types';
 import {
     capitalize,
     filterLogs,
@@ -77,20 +79,19 @@ interface DockerInspectResult {
 }
 
 export const Application = () => {
-    const [dockerStatus, setDockerStatus] = useState<DockerStatus>({ available: false, running: false });
-    const [containerStatus, setContainerStatus] = useState<ContainerStatus>({
-        exists: false,
+    const [deployment, setDeployment] = useState<Deployment>({
+        kind: 'none',
+        runtime: null,
         running: false,
         imagePresent: false,
+        dockerAvailable: false,
+        dockerRunning: false,
+        hostPort: 8080,
+        internalPort: 8080,
     });
     const [loading, setLoading] = useState(true);
     const [containerLogs, setContainerLogs] = useState<string>('');
     const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
-    const [systemdStatus, setSystemdStatus] = useState<SystemdStatus>({
-        exists: false,
-        running: false,
-        enabled: false,
-    });
 
     // BirdNET-Go application logs state
     const [appLogs, setAppLogs] = useState<LogEntry[]>([]);
@@ -116,214 +117,29 @@ export const Application = () => {
         versionInfoRef.current = versionInfo;
     }, [versionInfo]);
 
-    const checkDockerStatus = async () => {
-        try {
-            // Check if Docker is available
-            const dockerVersion = await cockpit.spawn(['docker', '--version']);
-
-            // Check if Docker service is running
-            const dockerService = await cockpit.spawn(['systemctl', 'is-active', 'docker']);
-
-            setDockerStatus({
-                available: true,
-                running: dockerService.trim() === 'active',
-                version: dockerVersion.trim(),
-            });
-        } catch {
-            setDockerStatus({ available: false, running: false });
-        }
+    const driver = getDriver(deployment);
+    const isSystemdKind = deployment.kind.endsWith('-systemd');
+    const dockerStatus: DockerStatus = {
+        available: deployment.dockerAvailable,
+        running: deployment.dockerRunning,
+        ...(deployment.dockerVersion !== undefined && { version: deployment.dockerVersion }),
     };
-
-    const checkSystemdStatus = async () => {
-        try {
-            // Check if systemd service exists - use list-unit-files which doesn't require privileges
-            const serviceFiles = await cockpit.spawn([
-                'systemctl',
-                'list-unit-files',
-                '--no-pager',
-                '--plain',
-                SERVICE_NAME,
-            ]);
-            const serviceExists = serviceFiles.includes(SERVICE_NAME);
-
-            if (serviceExists) {
-                // Get simple status - these commands work without sudo
-                let isRunning = false;
-                let isEnabled = false;
-                let simpleStatus = 'inactive';
-
-                // Check if enabled
-                try {
-                    const enabledState = await cockpit.spawn(['systemctl', 'is-enabled', SERVICE_NAME]);
-                    isEnabled = enabledState.trim() === 'enabled';
-                } catch {
-                    // is-enabled returns non-zero if not enabled
-                }
-
-                // Check if active
-                try {
-                    const activeState = await cockpit.spawn(['systemctl', 'is-active', SERVICE_NAME]);
-                    simpleStatus = activeState.trim();
-                    isRunning = simpleStatus === 'active';
-                } catch {
-                    // is-active returns non-zero if not active
-                    simpleStatus = 'inactive';
-                }
-
-                setSystemdStatus({
-                    exists: true,
-                    running: isRunning,
-                    enabled: isEnabled,
-                    status: simpleStatus,
-                });
-            } else {
-                setSystemdStatus({
-                    exists: false,
-                    running: false,
-                    enabled: false,
-                });
-            }
-        } catch (error) {
-            console.error('Error checking systemd status:', error);
-            setSystemdStatus({ exists: false, running: false, enabled: false });
-        }
+    const containerStatus: ContainerStatus = {
+        exists: deployment.kind.startsWith('docker'),
+        running: deployment.running,
+        imagePresent: deployment.imagePresent,
+        isCompose: deployment.kind === 'docker-compose',
+        ...(deployment.containerId !== undefined && { containerId: deployment.containerId }),
+        ...(deployment.statusText !== undefined && { status: deployment.statusText }),
+        ...(deployment.composeProject !== undefined && { composeProject: deployment.composeProject }),
+        ...(deployment.composeService !== undefined && { composeService: deployment.composeService }),
+        ...(deployment.composeWorkingDir !== undefined && { composeWorkingDir: deployment.composeWorkingDir }),
     };
-
-    const checkBirdNetGoStatus = async () => {
-        try {
-            // Check if BirdNET-Go image exists
-            const images = await cockpit.spawn(['docker', 'images', '--format', '{{.Repository}}:{{.Tag}}']);
-            const imagePresent = images.includes(DOCKER_IMAGE);
-
-            // First, try to check if BirdNET-Go is running via health API
-            let isActuallyRunning = false;
-            try {
-                const result = await cockpit.spawn([
-                    'curl',
-                    '-s', // Silent mode
-                    '-m',
-                    '2', // 2 second timeout
-                    getHealthUrl(window.location.hostname),
-                ]);
-
-                if (result) {
-                    const healthData = safeJsonParse<{ status?: string }>(
-                        result,
-                        {},
-                        'health check during status detection'
-                    );
-                    isActuallyRunning = healthData.status === 'healthy' || healthData.status === 'degraded';
-                } else {
-                    isActuallyRunning = false;
-                }
-            } catch {
-                // Expected if the service is not running
-                isActuallyRunning = false;
-            }
-
-            // Check for BirdNET-Go containers - get all containers with labels
-            const containers = await cockpit.spawn([
-                'docker',
-                'ps',
-                '-a',
-                '--format',
-                '{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}|{{.Labels}}',
-            ]);
-
-            if (containers.trim()) {
-                const containerLines = containers.trim().split('\n');
-
-                // Find BirdNET-Go container by image name or container name
-                // Be specific to avoid matching VSCode dev containers
-                const birdnetContainer = containerLines.find(line => {
-                    const parts = line.split('|');
-                    const image = parts[1] || '';
-                    const name = parts[3] || '';
-
-                    // Exclude VSCode containers (they start with vsc-)
-                    if (image.startsWith('vsc-')) {
-                        return false;
-                    }
-
-                    // Match official BirdNET-Go images or container name
-                    return image.startsWith(DOCKER_IMAGE) || image === CONTAINER_NAME || name === CONTAINER_NAME;
-                });
-
-                if (birdnetContainer) {
-                    const parts = birdnetContainer.split('|');
-                    const status = parts[2];
-                    const labels = parts.slice(4).join('|') || '';
-
-                    // Parse Docker Compose labels
-                    let isCompose = false;
-                    let composeProject = '';
-                    let composeService = '';
-                    let composeWorkingDir = '';
-
-                    if (labels.includes('com.docker.compose.project=')) {
-                        isCompose = true;
-                        // Extract compose project name
-                        const projectMatch = labels.match(/com.docker.compose.project=([^,]+)/);
-                        if (projectMatch) composeProject = projectMatch[1];
-
-                        // Extract compose service name
-                        const serviceMatch = labels.match(/com.docker.compose.service=([^,]+)/);
-                        if (serviceMatch) composeService = serviceMatch[1];
-
-                        // Extract working directory
-                        const workingDirMatch = labels.match(/com.docker.compose.project.working_dir=([^,]+)/);
-                        if (workingDirMatch) composeWorkingDir = workingDirMatch[1];
-                    }
-
-                    // Use health API result as primary indicator, fallback to Docker status
-                    setContainerStatus({
-                        exists: true,
-                        running: isActuallyRunning || status.startsWith('Up'),
-                        imagePresent,
-                        containerId: parts[0],
-                        status,
-                        isCompose,
-                        composeProject,
-                        composeService,
-                        composeWorkingDir,
-                    });
-                } else if (isActuallyRunning) {
-                    // BirdNET-Go is responding but we can't find a specific container
-                    // This means it's running as a native binary, not in Docker
-                    setContainerStatus({
-                        exists: false, // No container exists since it's a binary
-                        running: true,
-                        imagePresent,
-                        status: 'Running (native binary)',
-                    });
-                } else {
-                    setContainerStatus({
-                        exists: false,
-                        running: false,
-                        imagePresent,
-                    });
-                }
-            } else {
-                // No containers at all, but check if BirdNET-Go is running anyway
-                if (isActuallyRunning) {
-                    setContainerStatus({
-                        exists: false, // No container since it's a binary
-                        running: true,
-                        imagePresent,
-                        status: 'Running (native binary)',
-                    });
-                } else {
-                    setContainerStatus({
-                        exists: false,
-                        running: false,
-                        imagePresent,
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error checking BirdNET-Go status:', error);
-            setContainerStatus({ exists: false, running: false, imagePresent: false });
-        }
+    const systemdStatus: SystemdStatus = {
+        exists: isSystemdKind,
+        running: isSystemdKind && deployment.running,
+        enabled: deployment.systemdEnabled ?? false,
+        ...(deployment.systemdStatusText !== undefined && { status: deployment.systemdStatusText }),
     };
 
     const fetchLogs = useCallback(async () => {
@@ -598,9 +414,8 @@ export const Application = () => {
 
     const refreshStatus = useCallback(async () => {
         setLoading(true);
-        await checkDockerStatus();
-        await checkSystemdStatus();
-        await checkBirdNetGoStatus();
+        const d = await detectDeployment(window.location.hostname);
+        setDeployment(d);
         await fetchHealthStatus();
         setLoading(false);
     }, [fetchHealthStatus]);
@@ -739,37 +554,31 @@ export const Application = () => {
         return _('BirdNET-Go container running');
     };
 
-    const startContainer = async () => {
-        if (!containerStatus.containerId) return;
-
+    const onStart = async () => {
         try {
-            await cockpit.spawn(['docker', 'start', containerStatus.containerId]);
+            await driver.start();
             await refreshStatus();
-        } catch (error) {
-            console.error('Error starting container:', error);
+        } catch (e) {
+            console.error('Error starting BirdNET-Go:', e);
         }
     };
 
-    const stopContainer = async () => {
-        if (!containerStatus.containerId) return;
-
+    const onStop = async () => {
         try {
-            await cockpit.spawn(['docker', 'stop', containerStatus.containerId]);
+            await driver.stop();
             await refreshStatus();
-        } catch (error) {
-            console.error('Error stopping container:', error);
+        } catch (e) {
+            console.error('Error stopping BirdNET-Go:', e);
         }
     };
 
-    const restartContainer = async () => {
-        if (!containerStatus.containerId) return;
-
+    const onRestart = async () => {
         setRestarting(true);
         try {
-            await cockpit.spawn(['docker', 'restart', containerStatus.containerId]);
+            await driver.restart();
             await refreshStatus();
-        } catch (error) {
-            console.error('Error restarting container:', error);
+        } catch (e) {
+            console.error('Error restarting BirdNET-Go:', e);
         } finally {
             setRestarting(false);
         }
@@ -805,37 +614,6 @@ export const Application = () => {
             await refreshStatus();
         } catch (error) {
             console.error('Error pulling image:', error);
-        }
-    };
-
-    // Systemd service controls
-    const startSystemdService = async () => {
-        try {
-            await cockpit.spawn(['systemctl', 'start', SERVICE_NAME], { superuser: 'try' });
-            await refreshStatus();
-        } catch (error) {
-            console.error('Error starting systemd service:', error);
-        }
-    };
-
-    const stopSystemdService = async () => {
-        try {
-            await cockpit.spawn(['systemctl', 'stop', SERVICE_NAME], { superuser: 'try' });
-            await refreshStatus();
-        } catch (error) {
-            console.error('Error stopping systemd service:', error);
-        }
-    };
-
-    const restartSystemdService = async () => {
-        setRestarting(true);
-        try {
-            await cockpit.spawn(['systemctl', 'restart', SERVICE_NAME], { superuser: 'try' });
-            await refreshStatus();
-        } catch (error) {
-            console.error('Error restarting systemd service:', error);
-        } finally {
-            setRestarting(false);
         }
     };
 
@@ -995,18 +773,18 @@ export const Application = () => {
                                     {systemdStatus.exists && (
                                         <FlexItem>
                                             {!systemdStatus.running && (
-                                                <Button variant="primary" onClick={startSystemdService}>
+                                                <Button variant="primary" onClick={onStart}>
                                                     Start Service
                                                 </Button>
                                             )}
                                             {systemdStatus.running && (
-                                                <Button variant="secondary" onClick={stopSystemdService}>
+                                                <Button variant="secondary" onClick={onStop}>
                                                     Stop Service
                                                 </Button>
                                             )}
                                             <Button
                                                 variant="secondary"
-                                                onClick={restartSystemdService}
+                                                onClick={onRestart}
                                                 isLoading={restarting}
                                                 style={{ marginLeft: '0.5rem' }}
                                             >
@@ -1031,21 +809,21 @@ export const Application = () => {
                                                 {containerStatus.exists && !containerStatus.running && (
                                                     <Button
                                                         variant="primary"
-                                                        onClick={startContainer}
+                                                        onClick={onStart}
                                                         isDisabled={!dockerStatus.running}
                                                     >
                                                         Start Container
                                                     </Button>
                                                 )}
                                                 {containerStatus.exists && containerStatus.running && (
-                                                    <Button variant="secondary" onClick={stopContainer}>
+                                                    <Button variant="secondary" onClick={onStop}>
                                                         Stop Container
                                                     </Button>
                                                 )}
                                                 {containerStatus.exists && (
                                                     <Button
                                                         variant="secondary"
-                                                        onClick={restartContainer}
+                                                        onClick={onRestart}
                                                         isDisabled={!dockerStatus.running || restarting}
                                                         isLoading={restarting}
                                                         style={{ marginLeft: '0.5rem' }}
