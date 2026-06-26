@@ -75,6 +75,88 @@ describe('buildRunArgs', () => {
     });
 });
 
+describe('buildRunArgs reproduction', () => {
+    it('reproduces --device for a sound card in simple form', () => {
+        const i: DockerInspect = {
+            Name: '/birdnet-go',
+            Config: { Image: 'img' },
+            HostConfig: {
+                PortBindings: { '8080/tcp': [{ HostPort: '8080' }] },
+                Devices: [{ PathOnHost: '/dev/snd', PathInContainer: '/dev/snd', CgroupPermissions: 'rwm' }],
+            },
+        };
+        const args = buildRunArgs('docker', i, { hostPort: 80, internalPort: 8080 });
+        expect(args[args.indexOf('--device') + 1]).toBe('/dev/snd');
+    });
+
+    it('uses the explicit --device form when paths or perms differ', () => {
+        const i: DockerInspect = {
+            Name: '/birdnet-go',
+            Config: { Image: 'img' },
+            HostConfig: {
+                Devices: [{ PathOnHost: '/dev/snd', PathInContainer: '/dev/audio', CgroupPermissions: 'rw' }],
+            },
+        };
+        const args = buildRunArgs('docker', i, {});
+        expect(args[args.indexOf('--device') + 1]).toBe('/dev/snd:/dev/audio:rw');
+    });
+
+    it('reproduces --network host and omits -p under host networking', () => {
+        const i: DockerInspect = {
+            Name: '/birdnet-go',
+            Config: { Image: 'img' },
+            HostConfig: { NetworkMode: 'host', PortBindings: { '8080/tcp': [{ HostPort: '8080' }] } },
+        };
+        const args = buildRunArgs('docker', i, { hostPort: 80, internalPort: 8080 });
+        expect(args[args.indexOf('--network') + 1]).toBe('host');
+        expect(args).not.toContain('-p');
+    });
+
+    it('does not emit --network for default or bridge', () => {
+        const i: DockerInspect = { Name: '/x', Config: { Image: 'img' }, HostConfig: { NetworkMode: 'bridge' } };
+        expect(buildRunArgs('docker', i, {})).not.toContain('--network');
+    });
+
+    it('preserves the real restart policy including on-failure count', () => {
+        const i: DockerInspect = {
+            Name: '/x',
+            Config: { Image: 'img' },
+            HostConfig: { RestartPolicy: { Name: 'on-failure', MaximumRetryCount: 5 } },
+        };
+        const args = buildRunArgs('docker', i, {});
+        expect(args[args.indexOf('--restart') + 1]).toBe('on-failure:5');
+    });
+
+    it('defaults restart policy to unless-stopped when inspect carries none', () => {
+        const i: DockerInspect = { Name: '/x', Config: { Image: 'img' }, HostConfig: {} };
+        const args = buildRunArgs('docker', i, {});
+        expect(args[args.indexOf('--restart') + 1]).toBe('unless-stopped');
+    });
+
+    it('omits --restart for an explicit "no" policy (docker default)', () => {
+        const i: DockerInspect = {
+            Name: '/x',
+            Config: { Image: 'img' },
+            HostConfig: { RestartPolicy: { Name: 'no' } },
+        };
+        expect(buildRunArgs('docker', i, {})).not.toContain('--restart');
+    });
+
+    it('adds :ro and propagation suffixes on bind mounts', () => {
+        const i: DockerInspect = {
+            Name: '/x',
+            Config: { Image: 'img' },
+            Mounts: [
+                { Type: 'bind', Source: '/data', Destination: '/data', RW: false },
+                { Type: 'bind', Source: '/ext', Destination: '/ext', Propagation: 'rshared' },
+            ],
+        };
+        const args = buildRunArgs('docker', i, {});
+        expect(args).toContain('/data:/data:ro');
+        expect(args).toContain('/ext:/ext:rshared');
+    });
+});
+
 describe('recreateContainer', () => {
     const inspectJson = JSON.stringify([
         {
