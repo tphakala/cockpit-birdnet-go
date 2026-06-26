@@ -21,13 +21,14 @@ import { deriveCapabilities } from './capabilities';
 import type { DeploymentDriver, PortChangeResult } from './driver';
 import { exec } from './exec';
 import { recreateContainer } from './recreate';
+import { runtimeBin } from './runtime';
 import type { Deployment, DeploymentCapabilities } from './types';
 
 export class DockerDriver implements DeploymentDriver {
     constructor(private readonly d: Deployment) {}
 
-    private bin(): string {
-        return this.d.runtime === 'podman' ? 'podman' : 'docker';
+    private bin(): 'docker' | 'podman' {
+        return runtimeBin(this.d.runtime);
     }
 
     async start(): Promise<void> {
