@@ -210,6 +210,14 @@ describe('findUnreproducible', () => {
             RestartPolicy: { Name: 'unless-stopped' },
         },
         Mounts: [{ Type: 'bind', Source: '/cfg', Destination: '/config' }],
+        NetworkSettings: {
+            Networks: {
+                bridge: {
+                    IPAMConfig: { IPv4Address: '172.17.0.3' },
+                    Aliases: ['birdnet-go'],
+                },
+            },
+        },
     };
 
     it('returns no reasons for a reproducible sound-card container', () => {

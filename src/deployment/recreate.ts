@@ -159,7 +159,7 @@ export const findUnreproducible = (inspect: DockerInspect, opts: RecreateOptions
     if (hc.SecurityOpt?.length) reasons.push('security options (--security-opt)');
     if (hc.DeviceCgroupRules?.length) reasons.push('device cgroup rules');
     if (hc.DeviceRequests?.length) reasons.push('device requests such as GPUs (--gpus)');
-    if (hc.Runtime && hc.Runtime !== '' && hc.Runtime !== 'runc') reasons.push(`a custom runtime (${hc.Runtime})`);
+    if (hc.Runtime && hc.Runtime !== 'runc') reasons.push(`a custom runtime (${hc.Runtime})`);
 
     const user = inspect.Config?.User;
     if (user && user !== '') reasons.push(`a custom user (--user ${user})`);
