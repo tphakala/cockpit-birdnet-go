@@ -51,6 +51,7 @@ import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStat
 import { detectDeployment } from './deployment/detect';
 import { getDriver } from './deployment/driver';
 import { recreateContainer } from './deployment/recreate';
+import { runtimeBin } from './deployment/runtime';
 import type { Deployment } from './deployment/types';
 import { PortCard } from './components/PortCard';
 import {
@@ -140,13 +141,19 @@ export const Application = () => {
         }
 
         try {
-            const logs = await cockpit.spawn(['docker', 'logs', '--tail', '200', containerStatus.containerId]);
+            const logs = await cockpit.spawn([
+                runtimeBin(deployment.runtime),
+                'logs',
+                '--tail',
+                '200',
+                containerStatus.containerId,
+            ]);
             setContainerLogs(logs);
         } catch (error) {
             console.error('Error fetching logs:', error);
             setContainerLogs('Error fetching logs');
         }
-    }, [containerStatus.exists, containerStatus.containerId]);
+    }, [containerStatus.exists, containerStatus.containerId, deployment.runtime]);
 
     const fetchLogFiles = useCallback(async () => {
         try {
@@ -578,7 +585,7 @@ export const Application = () => {
     const createContainer = async () => {
         try {
             await cockpit.spawn([
-                'docker',
+                runtimeBin(deployment.runtime),
                 'run',
                 '-d',
                 '--name',
@@ -601,7 +608,7 @@ export const Application = () => {
 
     const pullImage = async () => {
         try {
-            await cockpit.spawn(['docker', 'pull', getImageRef()]);
+            await cockpit.spawn([runtimeBin(deployment.runtime), 'pull', getImageRef()]);
             await refreshStatus();
         } catch (error) {
             console.error('Error pulling image:', error);
@@ -621,14 +628,14 @@ export const Application = () => {
         setUpgrading(true);
 
         try {
-            // Check if Docker is available first
+            // Check that a container runtime is available first
             if (!dockerStatus.available) {
-                alert('Docker is not available. Please install Docker to upgrade BirdNET-Go.');
+                alert('No container runtime is available. Please install Docker or Podman to upgrade BirdNET-Go.');
                 return;
             }
 
             if (!dockerStatus.running) {
-                alert('Docker service is not running. Please start Docker service first.');
+                alert('The container runtime is not running. Please start Docker or Podman first.');
                 return;
             }
 
@@ -646,7 +653,8 @@ export const Application = () => {
             const imageName = getImageRef(imageTag);
 
             // Pull the new image
-            await cockpit.spawn(['docker', 'pull', imageName]);
+            const bin = runtimeBin(deployment.runtime);
+            await cockpit.spawn([bin, 'pull', imageName]);
 
             if (systemdStatus.exists) {
                 // For systemd service that runs Docker, just restart the service
@@ -656,7 +664,7 @@ export const Application = () => {
                 // Recreate the standalone container on the new image, reproducing its
                 // device/network/restart/mount flags. If the container carries settings
                 // that cannot be safely reproduced, leave it running and guide the user.
-                const result = await recreateContainer('docker', containerStatus.containerId, {
+                const result = await recreateContainer(bin, containerStatus.containerId, {
                     image: imageName,
                     internalPort: 8080,
                 });

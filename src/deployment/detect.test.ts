@@ -97,4 +97,72 @@ describe('detectDeployment', () => {
         expect(d.kind).toBe('native-systemd');
         expect(d.systemdStatusText).toBe('active');
     });
+
+    it('detects a running docker daemon as docker', async () => {
+        const { detectDeployment } = await import('./detect');
+        probeMock.mockImplementation((argv: string[]) => {
+            const cmd = argv.join(' ');
+            if (cmd.includes('docker --version')) return { ok: true, out: 'Docker version 27' };
+            if (cmd.includes('is-active docker')) return { ok: true, out: 'active' };
+            return { ok: false, out: '' };
+        });
+        const d = await detectDeployment('localhost');
+        expect(d.runtime).toBe('docker');
+        expect(d.dockerRunning).toBe(true);
+    });
+
+    it('prefers a running podman when the docker CLI exists but its daemon is down', async () => {
+        const { detectDeployment } = await import('./detect');
+        probeMock.mockImplementation((argv: string[]) => {
+            const cmd = argv.join(' ');
+            if (cmd.includes('docker --version')) return { ok: true, out: 'Docker version 27' };
+            if (cmd.includes('is-active docker')) return { ok: true, out: 'inactive' };
+            if (cmd.includes('podman --version')) return { ok: true, out: 'podman version 5' };
+            return { ok: false, out: '' };
+        });
+        const d = await detectDeployment('localhost');
+        expect(d.runtime).toBe('podman');
+        expect(d.dockerRunning).toBe(true);
+    });
+
+    it('reports docker present-but-stopped when its daemon is down and there is no podman', async () => {
+        const { detectDeployment } = await import('./detect');
+        probeMock.mockImplementation((argv: string[]) => {
+            const cmd = argv.join(' ');
+            if (cmd.includes('docker --version')) return { ok: true, out: 'Docker version 27' };
+            if (cmd.includes('is-active docker')) return { ok: true, out: 'inactive' };
+            if (cmd.includes('podman --version')) return { ok: false, out: '' };
+            return { ok: false, out: '' };
+        });
+        const d = await detectDeployment('localhost');
+        expect(d.runtime).toBe('docker');
+        expect(d.dockerAvailable).toBe(true);
+        expect(d.dockerRunning).toBe(false);
+    });
+
+    it('detects podman when the docker CLI is absent', async () => {
+        const { detectDeployment } = await import('./detect');
+        probeMock.mockImplementation((argv: string[]) => {
+            const cmd = argv.join(' ');
+            if (cmd.includes('docker --version')) return { ok: false, out: '' };
+            if (cmd.includes('podman --version')) return { ok: true, out: 'podman version 5' };
+            return { ok: false, out: '' };
+        });
+        const d = await detectDeployment('localhost');
+        expect(d.runtime).toBe('podman');
+        expect(d.dockerRunning).toBe(true);
+    });
+
+    it('reports no runtime when neither docker nor podman is present', async () => {
+        const { detectDeployment } = await import('./detect');
+        probeMock.mockImplementation((argv: string[]) => {
+            const cmd = argv.join(' ');
+            if (cmd.includes('docker --version')) return { ok: false, out: '' };
+            if (cmd.includes('podman --version')) return { ok: false, out: '' };
+            return { ok: false, out: '' };
+        });
+        const d = await detectDeployment('localhost');
+        expect(d.runtime).toBe(null);
+        expect(d.dockerAvailable).toBe(false);
+    });
 });

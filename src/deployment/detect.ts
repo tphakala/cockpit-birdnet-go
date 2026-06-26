@@ -20,6 +20,7 @@
 import { CONTAINER_NAME, DOCKER_IMAGE, SERVICE_NAME, getHealthUrl } from '../config';
 import { classifyDeployment } from './classify';
 import { probe } from './exec';
+import { runtimeBin } from './runtime';
 import type { ContainerRuntime, DetectionSignals, Deployment } from './types';
 
 export const parseContainerLine = (line: string): DetectionSignals['container'] | null => {
@@ -64,18 +65,21 @@ export const parseHostPort = (inspectJson: string, internalPort: number): number
 
 const detectDocker = async (): Promise<{ runtime: ContainerRuntime; docker: DetectionSignals['docker'] }> => {
     const dv = await probe(['docker', '--version']);
-    if (dv.ok) {
-        const active = await probe(['systemctl', 'is-active', 'docker']);
-        return { runtime: 'docker', docker: { available: true, running: active.out === 'active', version: dv.out } };
+    const dockerActive = dv.ok ? (await probe(['systemctl', 'is-active', 'docker'])).out === 'active' : false;
+    if (dv.ok && dockerActive) {
+        return { runtime: 'docker', docker: { available: true, running: true, version: dv.out } };
     }
+    // Docker CLI is missing or its daemon is down: prefer a runtime that is actually running.
     const pv = await probe(['podman', '--version']);
     if (pv.ok) return { runtime: 'podman', docker: { available: true, running: true, version: pv.out } };
+    // No podman; report docker present-but-stopped if its CLI exists, otherwise nothing.
+    if (dv.ok) return { runtime: 'docker', docker: { available: true, running: false, version: dv.out } };
     return { runtime: null, docker: { available: false, running: false } };
 };
 
 export const detectDeployment = async (hostname: string): Promise<Deployment> => {
     const { runtime, docker } = await detectDocker();
-    const bin = runtime ?? 'docker';
+    const bin = runtimeBin(runtime);
 
     // image present?
     const images = runtime ? (await probe([bin, 'images', '--format', '{{.Repository}}:{{.Tag}}'])).out : '';
