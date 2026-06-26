@@ -198,10 +198,23 @@ export const buildManualInstructions = (reasons: string[], opts: RecreateOptions
     );
 };
 
-export const recreateContainer = async (bin: string, containerId: string, opts: RecreateOptions): Promise<void> => {
+export type RecreateResult = { kind: 'recreated' } | { kind: 'unsupported'; reasons: string[]; instructions: string };
+
+export const recreateContainer = async (
+    bin: string,
+    containerId: string,
+    opts: RecreateOptions
+): Promise<RecreateResult> => {
     const inspectJson = await exec([bin, 'inspect', containerId]);
     const inspect = (JSON.parse(inspectJson) as DockerInspect[])[0];
     if (!inspect) throw new Error('failed to inspect container');
+
+    const reasons = findUnreproducible(inspect, opts);
+    if (reasons.length) {
+        // Leave the container running and untouched; the caller surfaces manual steps.
+        return { kind: 'unsupported', reasons, instructions: buildManualInstructions(reasons, opts) };
+    }
+
     await exec([bin, 'stop', containerId]);
     await exec([bin, 'rm', containerId]);
     try {
@@ -219,4 +232,5 @@ export const recreateContainer = async (bin: string, containerId: string, opts: 
         }
         throw err;
     }
+    return { kind: 'recreated' };
 };

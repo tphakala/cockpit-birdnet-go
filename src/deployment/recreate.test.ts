@@ -197,6 +197,39 @@ describe('recreateContainer', () => {
             'port restricted'
         );
     });
+
+    it('returns unsupported and never stops or removes a container it cannot reproduce', async () => {
+        const namedVolJson = JSON.stringify([
+            {
+                Name: '/birdnet-go',
+                Config: { Image: 'img' },
+                HostConfig: { PortBindings: { '8080/tcp': [{ HostPort: '8080' }] } },
+                Mounts: [{ Type: 'volume', Source: 'bng-data', Destination: '/data' }],
+            },
+        ]);
+        exec.mockImplementation((argv: string[]) => {
+            if (argv[1] === 'inspect') return Promise.resolve(namedVolJson);
+            return Promise.resolve('');
+        });
+        const result = await recreateContainer('docker', 'abc', { hostPort: 443, internalPort: 8080 });
+        expect(result.kind).toBe('unsupported');
+        // the container must be left untouched
+        const touched = exec.mock.calls.some(
+            c => Array.isArray(c[0]) && ((c[0] as string[])[1] === 'stop' || (c[0] as string[])[1] === 'rm')
+        );
+        expect(touched).toBe(false);
+    });
+
+    it('returns recreated and issues stop/rm/run for a reproducible container', async () => {
+        exec.mockImplementation((argv: string[]) => {
+            if (argv[1] === 'inspect') return Promise.resolve(inspectJson);
+            return Promise.resolve('');
+        });
+        const result = await recreateContainer('docker', 'abc', { hostPort: 8081, internalPort: 8080 });
+        expect(result).toEqual({ kind: 'recreated' });
+        expect(exec.mock.calls.some(c => (c[0] as string[])[1] === 'stop')).toBe(true);
+        expect(exec.mock.calls.some(c => (c[0] as string[])[1] === 'rm')).toBe(true);
+    });
 });
 
 describe('findUnreproducible', () => {
