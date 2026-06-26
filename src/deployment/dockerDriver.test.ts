@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const exec = vi.fn().mockResolvedValue('');
 vi.mock('./exec', () => ({ exec: (...a: unknown[]) => exec(...a), probe: vi.fn() }));
 
-const recreate = vi.fn().mockResolvedValue(undefined);
+const recreate = vi.fn().mockResolvedValue({ kind: 'recreated' });
 vi.mock('./recreate', () => ({ recreateContainer: (...a: unknown[]) => recreate(...a) }));
 
 import { DockerDriver } from './dockerDriver';
@@ -72,6 +72,16 @@ describe('DockerDriver.setHostPort', () => {
         const r = await new DockerDriver(compose).setHostPort(443);
         expect(r.kind).toBe('guided-manual');
         if (r.kind === 'guided-manual') expect(r.instructions).toContain('/srv/bng');
+    });
+
+    it('returns guided-manual when the container cannot be reproduced', async () => {
+        recreate.mockResolvedValueOnce({
+            kind: 'unsupported',
+            reasons: ['privileged mode (--privileged)'],
+            instructions: 'recreate by hand',
+        });
+        const r = await new DockerDriver(standalone).setHostPort(443);
+        expect(r).toEqual({ kind: 'guided-manual', instructions: 'recreate by hand' });
     });
 
     it('returns guided-manual instructions for a standalone deployment missing its container id', async () => {
