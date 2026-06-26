@@ -27,11 +27,14 @@ export const isPrivilegedPort = (p: number): boolean => p < 1024;
 export const parseListeningPorts = (ssOutput: string): Set<number> => {
     const ports = new Set<number>();
     for (const line of ssOutput.split('\n')) {
-        // local address is the 4th whitespace-separated column, e.g. 0.0.0.0:8080 or [::]:22
-        const local = line.trim().split(/\s+/)[3];
-        if (!local) continue;
-        const port = parseInt(local.slice(local.lastIndexOf(':') + 1), 10);
-        if (Number.isInteger(port)) ports.add(port);
+        for (const token of line.trim().split(/\s+/)) {
+            const colon = token.lastIndexOf(':');
+            if (colon === -1) continue;
+            const portStr = token.slice(colon + 1);
+            // Skip the peer column (ends in ':*') and any non-address token.
+            if (!/^\d+$/.test(portStr)) continue;
+            ports.add(parseInt(portStr, 10));
+        }
     }
     return ports;
 };

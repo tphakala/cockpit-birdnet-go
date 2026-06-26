@@ -45,19 +45,29 @@ export const PortCard: React.FC<PortCardProps> = ({ deployment, hostname, onChan
     const [busy, setBusy] = useState(false);
     const [result, setResult] = useState<ApplyResult | null>(null);
 
-    const port = parseInt(value, 10);
-    const valid = validatePort(port);
+    const port = Number(value);
+    const valid = /^\d+$/.test(value) && validatePort(port);
 
-    useEffect(() => {
-        const t = setTimeout(() => setValue(String(deployment.hostPort)), 0);
-        return () => clearTimeout(t);
-    }, [deployment.hostPort]);
+    // When the detected port changes, reset the input to it (adjust-state-during-render).
+    const [prevHostPort, setPrevHostPort] = useState(deployment.hostPort);
+    if (deployment.hostPort !== prevHostPort) {
+        setPrevHostPort(deployment.hostPort);
+        setValue(String(deployment.hostPort));
+    }
 
+    // When the typed value changes, clear any stale availability result immediately.
+    // IMPORTANT: compare the STRING `value`, not the numeric `port`. `port` can be NaN
+    // (e.g. empty/garbage input) and `NaN !== NaN` is always true, which would loop forever.
+    const [prevValue, setPrevValue] = useState(value);
+    if (value !== prevValue) {
+        setPrevValue(value);
+        setAvailable(null);
+    }
+
+    // Debounced availability check (valid && different from current). Only setState here
+    // is inside the timer callback, so react-hooks/set-state-in-effect does not fire.
     useEffect(() => {
-        if (!valid || port === deployment.hostPort) {
-            const t = setTimeout(() => setAvailable(null), 0);
-            return () => clearTimeout(t);
-        }
+        if (!valid || port === deployment.hostPort) return;
         let cancelled = false;
         const t = setTimeout(() => {
             checkPortAvailable(port)

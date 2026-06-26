@@ -44,6 +44,9 @@ describe('parseListeningPorts', () => {
     it('returns an empty set for empty input', () => {
         expect(parseListeningPorts('')).toEqual(new Set());
     });
+    it('extracts the local port even when ss emits a leading Netid column', () => {
+        expect(parseListeningPorts('tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:*')).toEqual(new Set([8080]));
+    });
 });
 
 describe('checkPortAvailable', () => {
