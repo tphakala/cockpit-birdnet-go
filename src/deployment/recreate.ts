@@ -76,7 +76,11 @@ export const recreateContainer = async (bin: string, containerId: string, opts: 
         // original (original port mapping and image), then surface the failure.
         const restoreOpts: RecreateOptions = {};
         if (opts.internalPort !== undefined) restoreOpts.internalPort = opts.internalPort;
-        await exec(buildRunArgs(bin, inspect, restoreOpts));
+        try {
+            await exec(buildRunArgs(bin, inspect, restoreOpts));
+        } catch {
+            // The restore run also failed; fall through and surface the original error.
+        }
         throw err;
     }
 };

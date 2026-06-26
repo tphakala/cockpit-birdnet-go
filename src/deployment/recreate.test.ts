@@ -97,4 +97,16 @@ describe('recreateContainer', () => {
         const restoreCall = exec.mock.calls.find(c => Array.isArray(c[0]) && (c[0] as string[]).includes('8080:8080'));
         expect(restoreCall).toBeTruthy();
     });
+
+    it('surfaces the original error even if the restore run also fails', async () => {
+        exec.mockImplementation((argv: string[]) => {
+            if (argv[1] === 'inspect') return Promise.resolve(inspectJson);
+            if (argv.includes('443:8080')) return Promise.reject(new Error('port restricted')); // new run fails
+            if (argv.includes('8080:8080')) return Promise.reject(new Error('restore failed')); // restore also fails
+            return Promise.resolve(''); // stop, rm
+        });
+        await expect(recreateContainer('docker', 'abc', { hostPort: 443, internalPort: 8080 })).rejects.toThrow(
+            'port restricted'
+        );
+    });
 });
