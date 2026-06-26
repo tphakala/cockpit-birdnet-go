@@ -51,6 +51,7 @@ import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStat
 import { detectDeployment } from './deployment/detect';
 import { getDriver } from './deployment/driver';
 import type { Deployment } from './deployment/types';
+import { PortCard } from './components/PortCard';
 import {
     capitalize,
     filterLogs,
@@ -1228,6 +1229,14 @@ export const Application = () => {
                                 )}
                             </CardBody>
                         </Card>
+                    </GridItem>
+
+                    <GridItem xl={6} lg={6} md={12}>
+                        <PortCard
+                            deployment={deployment}
+                            hostname={window.location.hostname}
+                            onChanged={refreshStatus}
+                        />
                     </GridItem>
 
                     <GridItem span={12}>

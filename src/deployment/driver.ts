@@ -21,12 +21,15 @@ import { DockerDriver } from './dockerDriver';
 import { NativeDriver } from './nativeDriver';
 import type { Deployment, DeploymentCapabilities } from './types';
 
+export type PortChangeResult = { kind: 'applied' } | { kind: 'guided-manual'; instructions: string };
+
 export interface DeploymentDriver {
     start(): Promise<void>;
     stop(): Promise<void>;
     restart(): Promise<void>;
     getHostPort(): Promise<number>;
     getCapabilities(): DeploymentCapabilities;
+    setHostPort(port: number): Promise<PortChangeResult>;
 }
 
 export const getDriver = (d: Deployment): DeploymentDriver =>
