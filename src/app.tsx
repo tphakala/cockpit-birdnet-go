@@ -628,7 +628,7 @@ export const Application = () => {
         setUpgrading(true);
 
         try {
-            // Check if Docker is available first
+            // Check that a container runtime is available first
             if (!dockerStatus.available) {
                 alert('No container runtime is available. Please install Docker or Podman to upgrade BirdNET-Go.');
                 return;
