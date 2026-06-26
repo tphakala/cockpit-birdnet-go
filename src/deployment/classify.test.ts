@@ -59,6 +59,21 @@ describe('classifyDeployment', () => {
         expect(d.systemdEnabled).toBe(true);
     });
 
+    it('native-systemd carries systemdStatusText from the systemd signal status', () => {
+        const d = classifyDeployment({
+            ...base,
+            systemd: { exists: true, running: true, enabled: false, status: 'active' },
+        });
+        expect(d.kind).toBe('native-systemd');
+        expect(d.systemdStatusText).toBe('active');
+    });
+
+    it('native (health-only, no container) sets statusText to "Running (native binary)"', () => {
+        const d = classifyDeployment({ runtime: null, imagePresent: false, healthRunning: true });
+        expect(d.kind).toBe('native');
+        expect(d.statusText).toBe('Running (native binary)');
+    });
+
     it('native when only the health API answers', () => {
         const d = classifyDeployment({ runtime: null, imagePresent: false, healthRunning: true });
         expect(d.kind).toBe('native');

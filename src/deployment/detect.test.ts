@@ -67,4 +67,21 @@ describe('detectDeployment', () => {
         expect(d.runtime).toBe('docker');
         expect(d.hostPort).toBe(8080);
     });
+
+    it('populates systemdStatusText from is-active output for a native-systemd deployment', async () => {
+        const { detectDeployment } = await import('./detect');
+        probeMock.mockImplementation((argv: string[]) => {
+            const cmd = argv.join(' ');
+            if (cmd.includes('docker --version')) return { ok: false, out: '' };
+            if (cmd.includes('podman --version')) return { ok: false, out: '' };
+            if (cmd.includes('curl')) return { ok: false, out: '' };
+            if (cmd.includes('list-unit-files')) return { ok: true, out: 'birdnet-go.service enabled' };
+            if (cmd.includes('is-active')) return { ok: true, out: 'active' };
+            if (cmd.includes('is-enabled')) return { ok: true, out: 'enabled' };
+            return { ok: false, out: '' };
+        });
+        const d = await detectDeployment('localhost');
+        expect(d.kind).toBe('native-systemd');
+        expect(d.systemdStatusText).toBe('active');
+    });
 });

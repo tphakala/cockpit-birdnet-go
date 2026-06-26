@@ -133,7 +133,7 @@ export const Application = () => {
         exists: isSystemdKind,
         running: isSystemdKind && deployment.running,
         enabled: deployment.systemdEnabled ?? false,
-        ...(deployment.statusText !== undefined && { status: deployment.statusText }),
+        ...(deployment.systemdStatusText !== undefined && { status: deployment.systemdStatusText }),
     };
 
     const fetchLogs = useCallback(async () => {
@@ -548,13 +548,21 @@ export const Application = () => {
         return _('BirdNET-Go container running');
     };
 
-    const onStart = async () => { await driver.start(); await refreshStatus(); };
+    const onStart = async () => {
+        try { await driver.start(); await refreshStatus(); }
+        catch (e) { console.error('Error starting BirdNET-Go:', e); }
+    };
 
-    const onStop = async () => { await driver.stop(); await refreshStatus(); };
+    const onStop = async () => {
+        try { await driver.stop(); await refreshStatus(); }
+        catch (e) { console.error('Error stopping BirdNET-Go:', e); }
+    };
 
     const onRestart = async () => {
         setRestarting(true);
-        try { await driver.restart(); await refreshStatus(); } finally { setRestarting(false); }
+        try { await driver.restart(); await refreshStatus(); }
+        catch (e) { console.error('Error restarting BirdNET-Go:', e); }
+        finally { setRestarting(false); }
     };
 
     const createContainer = async () => {

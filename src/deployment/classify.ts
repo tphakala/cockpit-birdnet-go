@@ -55,6 +55,8 @@ export const classifyDeployment = (s: DetectionSignals): Deployment => {
     if (container?.composeWorkingDir !== undefined) result.composeWorkingDir = container.composeWorkingDir;
     if (s.docker?.version !== undefined) result.dockerVersion = s.docker.version;
     if (container?.status !== undefined) result.statusText = container.status;
+    if (!hasContainer && s.healthRunning) result.statusText = 'Running (native binary)';
+    if (s.systemd?.status !== undefined) result.systemdStatusText = s.systemd.status;
     if (s.systemd?.enabled !== undefined) result.systemdEnabled = s.systemd.enabled;
 
     return result;

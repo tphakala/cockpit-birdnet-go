@@ -47,6 +47,8 @@ export interface Deployment {
     dockerRunning: boolean;
     dockerVersion?: string;
     statusText?: string; // human-readable container/service status, e.g. "Up 2 hours"
+    // systemd active-state text ("active"/"inactive"/"failed") for the status grid
+    systemdStatusText?: string;
     systemdEnabled?: boolean;
 }
 
@@ -64,7 +66,7 @@ export interface DetectionSignals {
         hostPort?: number;
         status?: string;
     };
-    systemd?: { exists: boolean; running: boolean; enabled: boolean };
+    systemd?: { exists: boolean; running: boolean; enabled: boolean; status?: string };
     healthRunning: boolean;
 }
 
