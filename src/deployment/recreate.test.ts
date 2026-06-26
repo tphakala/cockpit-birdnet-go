@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const exec = vi.fn();
 vi.mock('./exec', () => ({ exec: (...a: unknown[]) => exec(...a) }));
 
-import { buildRunArgs, recreateContainer, type DockerInspect } from './recreate';
+import {
+    buildManualInstructions,
+    buildRunArgs,
+    findUnreproducible,
+    recreateContainer,
+    type DockerInspect,
+} from './recreate';
 
 afterEach(() => exec.mockReset());
 
@@ -190,5 +196,84 @@ describe('recreateContainer', () => {
         await expect(recreateContainer('docker', 'abc', { hostPort: 443, internalPort: 8080 })).rejects.toThrow(
             'port restricted'
         );
+    });
+});
+
+describe('findUnreproducible', () => {
+    const clean: DockerInspect = {
+        Name: '/birdnet-go',
+        Config: { Image: 'img' },
+        HostConfig: {
+            PortBindings: { '8080/tcp': [{ HostPort: '8080' }] },
+            Devices: [{ PathOnHost: '/dev/snd', PathInContainer: '/dev/snd', CgroupPermissions: 'rwm' }],
+            NetworkMode: 'bridge',
+            RestartPolicy: { Name: 'unless-stopped' },
+        },
+        Mounts: [{ Type: 'bind', Source: '/cfg', Destination: '/config' }],
+    };
+
+    it('returns no reasons for a reproducible sound-card container', () => {
+        expect(findUnreproducible(clean, { hostPort: 80, internalPort: 8080 })).toEqual([]);
+    });
+
+    it.each([
+        ['named volume', { Mounts: [{ Type: 'volume', Source: 'vol', Destination: '/data' }] }],
+        ['privileged', { HostConfig: { Privileged: true } }],
+        ['cap-add', { HostConfig: { CapAdd: ['NET_ADMIN'] } }],
+        ['cap-drop', { HostConfig: { CapDrop: ['ALL'] } }],
+        ['tmpfs', { HostConfig: { Tmpfs: { '/run': '' } } }],
+        ['sysctls', { HostConfig: { Sysctls: { 'net.core.somaxconn': '1024' } } }],
+        ['ulimits', { HostConfig: { Ulimits: [{}] } }],
+        ['group-add', { HostConfig: { GroupAdd: ['audio'] } }],
+        ['extra-hosts', { HostConfig: { ExtraHosts: ['db:1.2.3.4'] } }],
+        ['dns', { HostConfig: { Dns: ['1.1.1.1'] } }],
+        ['security-opt', { HostConfig: { SecurityOpt: ['label=disable'] } }],
+        ['device-cgroup-rules', { HostConfig: { DeviceCgroupRules: ['c 1:3 rwm'] } }],
+        ['device-requests (gpu)', { HostConfig: { DeviceRequests: [{}] } }],
+        ['custom runtime', { HostConfig: { Runtime: 'nvidia' } }],
+        ['custom user', { Config: { Image: 'img', User: '1000:1000' } }],
+        ['compose labels', { Config: { Image: 'img', Labels: { 'com.docker.compose.project': 'p' } } }],
+    ])('flags %s', (_label, partial) => {
+        const i: DockerInspect = { Name: '/x', Config: { Image: 'img' }, ...partial } as DockerInspect;
+        expect(findUnreproducible(i, {}).length).toBeGreaterThan(0);
+    });
+
+    it('flags a static IP or aliases on a custom network', () => {
+        const i: DockerInspect = {
+            Name: '/x',
+            Config: { Image: 'img' },
+            HostConfig: { NetworkMode: 'mynet' },
+            NetworkSettings: { Networks: { mynet: { IPAMConfig: { IPv4Address: '10.0.0.5' }, Aliases: ['bng'] } } },
+        };
+        expect(findUnreproducible(i, {}).length).toBeGreaterThan(0);
+    });
+
+    it('does not flag a plain custom network with no static IP or aliases', () => {
+        const i: DockerInspect = {
+            Name: '/x',
+            Config: { Image: 'img' },
+            HostConfig: { NetworkMode: 'mynet' },
+            NetworkSettings: { Networks: { mynet: { IPAMConfig: null, Aliases: null } } },
+        };
+        expect(findUnreproducible(i, {})).toEqual([]);
+    });
+
+    it('flags a port change on a host-network container but not an upgrade', () => {
+        const i: DockerInspect = { Name: '/x', Config: { Image: 'img' }, HostConfig: { NetworkMode: 'host' } };
+        expect(findUnreproducible(i, { hostPort: 80 }).length).toBeGreaterThan(0);
+        expect(findUnreproducible(i, { image: 'img:v2' })).toEqual([]);
+    });
+});
+
+describe('buildManualInstructions', () => {
+    it('mentions the reasons and the port change', () => {
+        const msg = buildManualInstructions(['privileged mode (--privileged)'], { hostPort: 443 });
+        expect(msg).toContain('privileged mode (--privileged)');
+        expect(msg).toContain('443');
+    });
+
+    it('describes an upgrade when no host port is given', () => {
+        const msg = buildManualInstructions(['a named volume (vol) at /data'], { image: 'img:v2' });
+        expect(msg.toLowerCase()).toContain('upgrade');
     });
 });
