@@ -119,7 +119,12 @@ export const detectDeployment = async (hostname: string): Promise<Deployment> =>
         const active = await probe(['systemctl', 'is-active', SERVICE_NAME]);
         const enabled = await probe(['systemctl', 'is-enabled', SERVICE_NAME]);
         const activeText = active.out || 'inactive';
-        systemd = { exists: true, running: active.out === 'active', enabled: enabled.out === 'enabled', status: activeText };
+        systemd = {
+            exists: true,
+            running: active.out === 'active',
+            enabled: enabled.out === 'enabled',
+            status: activeText,
+        };
     }
 
     // Build signals object, only including properties that are not undefined

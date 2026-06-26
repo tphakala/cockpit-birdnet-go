@@ -80,8 +80,14 @@ interface DockerInspectResult {
 
 export const Application = () => {
     const [deployment, setDeployment] = useState<Deployment>({
-        kind: 'none', runtime: null, running: false, imagePresent: false,
-        dockerAvailable: false, dockerRunning: false, hostPort: 8080, internalPort: 8080,
+        kind: 'none',
+        runtime: null,
+        running: false,
+        imagePresent: false,
+        dockerAvailable: false,
+        dockerRunning: false,
+        hostPort: 8080,
+        internalPort: 8080,
     });
     const [loading, setLoading] = useState(true);
     const [containerLogs, setContainerLogs] = useState<string>('');
@@ -549,20 +555,33 @@ export const Application = () => {
     };
 
     const onStart = async () => {
-        try { await driver.start(); await refreshStatus(); }
-        catch (e) { console.error('Error starting BirdNET-Go:', e); }
+        try {
+            await driver.start();
+            await refreshStatus();
+        } catch (e) {
+            console.error('Error starting BirdNET-Go:', e);
+        }
     };
 
     const onStop = async () => {
-        try { await driver.stop(); await refreshStatus(); }
-        catch (e) { console.error('Error stopping BirdNET-Go:', e); }
+        try {
+            await driver.stop();
+            await refreshStatus();
+        } catch (e) {
+            console.error('Error stopping BirdNET-Go:', e);
+        }
     };
 
     const onRestart = async () => {
         setRestarting(true);
-        try { await driver.restart(); await refreshStatus(); }
-        catch (e) { console.error('Error restarting BirdNET-Go:', e); }
-        finally { setRestarting(false); }
+        try {
+            await driver.restart();
+            await refreshStatus();
+        } catch (e) {
+            console.error('Error restarting BirdNET-Go:', e);
+        } finally {
+            setRestarting(false);
+        }
     };
 
     const createContainer = async () => {

@@ -7,11 +7,22 @@ import { DockerDriver } from './dockerDriver';
 import type { Deployment } from './types';
 
 const standalone: Deployment = {
-    kind: 'docker-standalone', runtime: 'docker', running: true, imagePresent: true,
-    containerId: 'abc', hostPort: 8080, internalPort: 8080,
-    dockerAvailable: true, dockerRunning: true,
+    kind: 'docker-standalone',
+    runtime: 'docker',
+    running: true,
+    imagePresent: true,
+    containerId: 'abc',
+    hostPort: 8080,
+    internalPort: 8080,
+    dockerAvailable: true,
+    dockerRunning: true,
 };
-const podmanSystemd: Deployment = { ...standalone, kind: 'docker-systemd', runtime: 'podman', serviceName: 'birdnet-go.service' };
+const podmanSystemd: Deployment = {
+    ...standalone,
+    kind: 'docker-systemd',
+    runtime: 'podman',
+    serviceName: 'birdnet-go.service',
+};
 
 afterEach(() => exec.mockClear());
 

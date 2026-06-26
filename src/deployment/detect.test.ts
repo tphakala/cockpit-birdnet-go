@@ -13,7 +13,13 @@ describe('parseContainerLine', () => {
         const line =
             'c1|ghcr.io/tphakala/birdnet-go:latest|Up|bng|com.docker.compose.project=bng,com.docker.compose.service=web,com.docker.compose.project.working_dir=/srv/bng';
         const c = parseContainerLine(line);
-        expect(c).toMatchObject({ id: 'c1', isCompose: true, composeProject: 'bng', composeService: 'web', composeWorkingDir: '/srv/bng' });
+        expect(c).toMatchObject({
+            id: 'c1',
+            isCompose: true,
+            composeProject: 'bng',
+            composeService: 'web',
+            composeWorkingDir: '/srv/bng',
+        });
     });
 
     it('ignores vscode dev containers', () => {
@@ -21,7 +27,9 @@ describe('parseContainerLine', () => {
     });
 
     it('returns running:false for an exited container', () => {
-        expect(parseContainerLine('d|ghcr.io/tphakala/birdnet-go:nightly|Exited (0) 3m ago|birdnet-go|')?.running).toBe(false);
+        expect(parseContainerLine('d|ghcr.io/tphakala/birdnet-go:nightly|Exited (0) 3m ago|birdnet-go|')?.running).toBe(
+            false
+        );
     });
 });
 
@@ -57,8 +65,13 @@ describe('detectDeployment', () => {
             if (cmd.includes('docker --version')) return { ok: true, out: 'Docker version 27' };
             if (cmd.includes('images')) return { ok: true, out: 'ghcr.io/tphakala/birdnet-go:nightly' };
             if (cmd.includes('curl')) return { ok: false, out: '' };
-            if (cmd.includes('ps -a')) return { ok: true, out: 'abc|ghcr.io/tphakala/birdnet-go:nightly|Up|birdnet-go|' };
-            if (cmd.includes('inspect')) return { ok: true, out: JSON.stringify([{ HostConfig: { PortBindings: { '8080/tcp': [{ HostPort: '8080' }] } } }]) };
+            if (cmd.includes('ps -a'))
+                return { ok: true, out: 'abc|ghcr.io/tphakala/birdnet-go:nightly|Up|birdnet-go|' };
+            if (cmd.includes('inspect'))
+                return {
+                    ok: true,
+                    out: JSON.stringify([{ HostConfig: { PortBindings: { '8080/tcp': [{ HostPort: '8080' }] } } }]),
+                };
             if (cmd.includes('list-unit-files')) return { ok: true, out: '' };
             return { ok: false, out: '' };
         });

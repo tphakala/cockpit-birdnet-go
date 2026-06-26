@@ -32,7 +32,11 @@ export const deriveCapabilities = (d: Deployment): DeploymentCapabilities => {
         case 'docker-compose':
             // Editing a systemd unit's ExecStart or a compose file in place is
             // fragile; guide the user instead. Auto is a later milestone.
-            return { canChangePort: true, portChangeMode: 'guided-manual', privilegedPortStrategy: dockerPrivileged(d) };
+            return {
+                canChangePort: true,
+                portChangeMode: 'guided-manual',
+                privilegedPortStrategy: dockerPrivileged(d),
+            };
         // Native auto-edit of the listen port is deferred until birdnet-go's
         // config key is verified (see M1). Until then both native shapes are
         // guided-manual: the plugin can restart the service but instructs the

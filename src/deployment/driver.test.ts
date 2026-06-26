@@ -6,9 +6,14 @@ import { NativeDriver } from './nativeDriver';
 import type { Deployment } from './types';
 
 const dep = (kind: Deployment['kind']): Deployment => ({
-    kind, runtime: 'docker', running: false, imagePresent: false,
-    dockerAvailable: false, dockerRunning: false,
-    hostPort: 8080, internalPort: 8080,
+    kind,
+    runtime: 'docker',
+    running: false,
+    imagePresent: false,
+    dockerAvailable: false,
+    dockerRunning: false,
+    hostPort: 8080,
+    internalPort: 8080,
 });
 
 describe('getDriver', () => {

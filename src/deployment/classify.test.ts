@@ -24,7 +24,11 @@ describe('classifyDeployment', () => {
     });
 
     it('native-systemd when a systemd unit exists but no container', () => {
-        const d = classifyDeployment({ ...base, systemd: { exists: true, running: true, enabled: false }, healthRunning: true });
+        const d = classifyDeployment({
+            ...base,
+            systemd: { exists: true, running: true, enabled: false },
+            healthRunning: true,
+        });
         expect(d.kind).toBe('native-systemd');
         expect(d.internalPort).toBe(d.hostPort);
     });
@@ -32,7 +36,14 @@ describe('classifyDeployment', () => {
     it('docker-compose when a compose-labelled container exists and no systemd', () => {
         const d = classifyDeployment({
             ...base,
-            container: { id: 'c1', running: true, isCompose: true, composeProject: 'p', composeWorkingDir: '/srv/bng', hostPort: 9000 },
+            container: {
+                id: 'c1',
+                running: true,
+                isCompose: true,
+                composeProject: 'p',
+                composeWorkingDir: '/srv/bng',
+                hostPort: 9000,
+            },
         });
         expect(d.kind).toBe('docker-compose');
         expect(d.composeWorkingDir).toBe('/srv/bng');
