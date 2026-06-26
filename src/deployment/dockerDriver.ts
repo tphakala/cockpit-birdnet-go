@@ -18,8 +18,9 @@
  */
 
 import { deriveCapabilities } from './capabilities';
-import type { DeploymentDriver } from './driver';
+import type { DeploymentDriver, PortChangeResult } from './driver';
 import { exec } from './exec';
+import { recreateContainer } from './recreate';
 import type { Deployment, DeploymentCapabilities } from './types';
 
 export class DockerDriver implements DeploymentDriver {
@@ -59,5 +60,31 @@ export class DockerDriver implements DeploymentDriver {
 
     getCapabilities(): DeploymentCapabilities {
         return deriveCapabilities(this.d);
+    }
+
+    async setHostPort(port: number): Promise<PortChangeResult> {
+        if (this.d.kind === 'docker-standalone' && this.d.containerId) {
+            await recreateContainer(this.bin(), this.d.containerId, {
+                hostPort: port,
+                internalPort: this.d.internalPort,
+            });
+            return { kind: 'applied' };
+        }
+        if (this.d.kind === 'docker-compose') {
+            const dir = this.d.composeWorkingDir || 'your compose project directory';
+            return {
+                kind: 'guided-manual',
+                instructions:
+                    `In ${dir}, set the host side of the birdnet-go service ports mapping to ${port} ` +
+                    `(e.g. "${port}:8080"), then run: docker compose up -d`,
+            };
+        }
+        // docker-systemd
+        return {
+            kind: 'guided-manual',
+            instructions:
+                `Edit the ExecStart line of ${this.d.serviceName} to map host port ${port} (e.g. -p ${port}:8080), ` +
+                `then run: systemctl daemon-reload && systemctl restart ${this.d.serviceName}`,
+        };
     }
 }

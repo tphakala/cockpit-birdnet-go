@@ -18,7 +18,7 @@
  */
 
 import { deriveCapabilities } from './capabilities';
-import type { DeploymentDriver } from './driver';
+import type { DeploymentDriver, PortChangeResult } from './driver';
 import { exec } from './exec';
 import type { Deployment, DeploymentCapabilities } from './types';
 
@@ -43,5 +43,20 @@ export class NativeDriver implements DeploymentDriver {
 
     getCapabilities(): DeploymentCapabilities {
         return deriveCapabilities(this.d);
+    }
+
+    async setHostPort(port: number): Promise<PortChangeResult> {
+        const restart = this.d.serviceName
+            ? `then restart it from this page or run: systemctl restart ${this.d.serviceName}`
+            : 'then restart the birdnet-go process';
+        return {
+            kind: 'guided-manual',
+            instructions:
+                `Set the web server port to ${port} in the BirdNET-Go configuration, ${restart}. ` +
+                (port < 1024
+                    ? `Because ${port} is a privileged port, also grant the binary permission with: ` +
+                      `setcap 'cap_net_bind_service=+ep' /path/to/birdnet-go`
+                    : ''),
+        };
     }
 }

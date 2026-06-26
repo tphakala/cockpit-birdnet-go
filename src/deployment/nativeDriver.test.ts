@@ -41,3 +41,11 @@ describe('NativeDriver lifecycle', () => {
         expect(exec).not.toHaveBeenCalled();
     });
 });
+
+describe('NativeDriver.setHostPort', () => {
+    it('returns guided-manual instructions and does not exec', async () => {
+        const r = await new NativeDriver(nativeSystemd).setHostPort(443);
+        expect(r.kind).toBe('guided-manual');
+        expect(exec).not.toHaveBeenCalled();
+    });
+});
