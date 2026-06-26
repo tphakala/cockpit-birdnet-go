@@ -48,4 +48,11 @@ describe('NativeDriver.setHostPort', () => {
         expect(r.kind).toBe('guided-manual');
         expect(exec).not.toHaveBeenCalled();
     });
+
+    it('includes a setcap hint for privileged ports and does not exec', async () => {
+        const r = await new NativeDriver(nativeSystemd).setHostPort(80);
+        expect(r.kind).toBe('guided-manual');
+        if (r.kind === 'guided-manual') expect(r.instructions).toContain('cap_net_bind_service');
+        expect(exec).not.toHaveBeenCalled();
+    });
 });

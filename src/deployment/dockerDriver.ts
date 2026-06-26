@@ -79,12 +79,18 @@ export class DockerDriver implements DeploymentDriver {
                     `(e.g. "${port}:8080"), then run: docker compose up -d`,
             };
         }
-        // docker-systemd
+        if (this.d.kind === 'docker-systemd') {
+            return {
+                kind: 'guided-manual',
+                instructions:
+                    `Edit the ExecStart line of ${this.d.serviceName} to map host port ${port} (e.g. -p ${port}:8080), ` +
+                    `then run: systemctl daemon-reload && systemctl restart ${this.d.serviceName}`,
+            };
+        }
+        // Fallback: e.g. a standalone deployment with no container id, or an unexpected kind.
         return {
             kind: 'guided-manual',
-            instructions:
-                `Edit the ExecStart line of ${this.d.serviceName} to map host port ${port} (e.g. -p ${port}:8080), ` +
-                `then run: systemctl daemon-reload && systemctl restart ${this.d.serviceName}`,
+            instructions: `Could not determine how to change the port automatically for this deployment. Recreate the container with the new host mapping (for example -p ${port}:8080).`,
         };
     }
 }

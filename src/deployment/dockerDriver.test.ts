@@ -70,6 +70,24 @@ describe('DockerDriver.setHostPort', () => {
     it('returns guided-manual instructions referencing the compose dir for compose', async () => {
         const compose: Deployment = { ...standalone, kind: 'docker-compose', composeWorkingDir: '/srv/bng' };
         const r = await new DockerDriver(compose).setHostPort(443);
+        expect(r.kind).toBe('guided-manual');
         if (r.kind === 'guided-manual') expect(r.instructions).toContain('/srv/bng');
+    });
+
+    it('returns guided-manual instructions for a standalone deployment missing its container id', async () => {
+        const orphan: Deployment = {
+            kind: 'docker-standalone',
+            runtime: 'docker',
+            running: true,
+            imagePresent: true,
+            hostPort: 8080,
+            internalPort: 8080,
+            dockerAvailable: true,
+            dockerRunning: true,
+        };
+        const r = await new DockerDriver(orphan).setHostPort(443);
+        expect(r.kind).toBe('guided-manual');
+        if (r.kind === 'guided-manual') expect(r.instructions).not.toContain('undefined');
+        expect(recreate).not.toHaveBeenCalled();
     });
 });
