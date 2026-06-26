@@ -17,7 +17,9 @@
  * along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
  */
 
-import type { DeploymentCapabilities } from './types';
+import { DockerDriver } from './dockerDriver';
+import { NativeDriver } from './nativeDriver';
+import type { Deployment, DeploymentCapabilities } from './types';
 
 export interface DeploymentDriver {
     start(): Promise<void>;
@@ -26,3 +28,6 @@ export interface DeploymentDriver {
     getHostPort(): Promise<number>;
     getCapabilities(): DeploymentCapabilities;
 }
+
+export const getDriver = (d: Deployment): DeploymentDriver =>
+    d.kind.startsWith('docker') ? new DockerDriver(d) : new NativeDriver(d);
