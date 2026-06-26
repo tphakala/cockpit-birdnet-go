@@ -49,4 +49,10 @@ describe('PortCard', () => {
         const applyButton = await screen.findByRole('button', { name: /apply/i });
         expect(applyButton.hasAttribute('disabled')).toBe(true);
     });
+
+    it('disables apply when the entered port equals the current port', async () => {
+        render(<PortCard deployment={dep({})} hostname="localhost" onChanged={() => {}} />);
+        const applyButton = await screen.findByRole('button', { name: /apply/i });
+        expect(applyButton.hasAttribute('disabled')).toBe(true);
+    });
 });

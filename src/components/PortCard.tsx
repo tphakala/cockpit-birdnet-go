@@ -129,7 +129,7 @@ export const PortCard: React.FC<PortCardProps> = ({ deployment, hostname, onChan
                             variant="primary"
                             onClick={apply}
                             isLoading={busy}
-                            isDisabled={!caps.canChangePort || !valid || busy}
+                            isDisabled={!caps.canChangePort || !valid || busy || port === deployment.hostPort}
                         >
                             {_('Apply')}
                         </Button>

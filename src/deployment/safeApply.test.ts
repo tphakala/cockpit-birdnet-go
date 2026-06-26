@@ -141,4 +141,14 @@ describe('safeSetPort', () => {
         const r = await safeSetPort(mkDriver(), standalone, 9000, 'h', deps);
         expect(r.kind).toBe('rolled-back');
     });
+
+    it('reports a guided-manual rollback when the restore cannot be applied automatically', async () => {
+        const guidedRollbackDriver = mkDriver({
+            setHostPort: vi.fn(async () => ({ kind: 'guided-manual' as const, instructions: 'edit the unit' })),
+        });
+        const deps = mkDeps({ pollHealth: vi.fn(async () => false), getDriver: vi.fn(() => guidedRollbackDriver) });
+        const r = await safeSetPort(mkDriver(), standalone, 9000, 'h', deps);
+        expect(r.kind).toBe('rolled-back');
+        if (r.kind === 'rolled-back') expect(r.reason).toContain('manual steps');
+    });
 });

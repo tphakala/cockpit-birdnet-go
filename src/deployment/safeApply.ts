@@ -107,11 +107,12 @@ export const safeSetPort = async (
     // applied but unhealthy: re-detect to get a driver bound to the new container, restore the old port
     try {
         const after = await deps.redetect(hostname);
-        await deps.getDriver(after).setHostPort(snapshot);
-        return {
-            kind: 'rolled-back',
-            reason: `service did not become healthy on port ${newPort}; restored ${snapshot}`,
-        };
+        const restore = await deps.getDriver(after).setHostPort(snapshot);
+        const reason =
+            restore.kind === 'applied'
+                ? `service did not become healthy on port ${newPort}; restored ${snapshot}`
+                : `service did not become healthy on port ${newPort}; could not automatically restore port ${snapshot}, manual steps may be required: ${restore.instructions}`;
+        return { kind: 'rolled-back', reason };
     } catch (e) {
         return {
             kind: 'rolled-back',
