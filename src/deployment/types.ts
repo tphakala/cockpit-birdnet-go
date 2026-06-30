@@ -18,12 +18,7 @@
  */
 
 export type DeploymentKind =
-    | 'docker-standalone'
-    | 'docker-compose'
-    | 'docker-systemd'
-    | 'native-systemd'
-    | 'native'
-    | 'none';
+    'docker-standalone' | 'docker-compose' | 'docker-systemd' | 'native-systemd' | 'native' | 'none';
 
 export type ContainerRuntime = 'docker' | 'podman' | null;
 
