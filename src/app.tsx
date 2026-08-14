@@ -538,11 +538,11 @@ export const Application = () => {
         if (systemdStatus.exists) {
             const serviceType = containerStatus.exists
                 ? isPodman
-                    ? '(Podman systemd)'
-                    : '(Docker systemd)'
-                : '(binary systemd)';
-            if (systemdStatus.running) return _(`BirdNET-Go service running ${serviceType}`);
-            return _(`BirdNET-Go service stopped ${serviceType}`);
+                    ? _('(Podman systemd)')
+                    : _('(Docker systemd)')
+                : _('(binary systemd)');
+            const stateText = systemdStatus.running ? _('BirdNET-Go service running') : _('BirdNET-Go service stopped');
+            return `${stateText} ${serviceType}`;
         }
 
         // Then check Compose
