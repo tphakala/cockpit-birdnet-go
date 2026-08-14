@@ -9,6 +9,7 @@ import {
     getContainerStatusVariant,
     getDockerStatusVariant,
     getLogLevelColor,
+    getRuntimeStatusVariant,
     isBinaryInstallation,
     isValidLogFile,
     safeJsonParse,
@@ -260,6 +261,20 @@ describe('supportsAutomaticUpgrade', () => {
 
     it('returns false when no container exists', () => {
         expect(supportsAutomaticUpgrade(defaultSystemd, defaultContainer)).toBe(false);
+    });
+});
+
+describe('getRuntimeStatusVariant', () => {
+    it('returns danger when runtime not available', () => {
+        expect(getRuntimeStatusVariant({ available: false, running: false })).toBe('danger');
+    });
+
+    it('returns warning when runtime not running', () => {
+        expect(getRuntimeStatusVariant({ available: true, running: false })).toBe('warning');
+    });
+
+    it('returns success when runtime is running', () => {
+        expect(getRuntimeStatusVariant({ available: true, running: true })).toBe('success');
     });
 });
 

@@ -101,7 +101,7 @@ export const detectLogDirFromInspect = (inspectJson: string): string | null => {
             return `${dataMount.Source}/logs`;
         }
     } catch {
-        // Inspect output was not valid JSON – fall through
+        // Inspect output was not valid JSON - fall through
     }
     return null;
 };
@@ -126,7 +126,7 @@ export const detectVolumesFromInspect = (inspectJson: string): { configDir: stri
             }
         }
     } catch {
-        // Inspect output was not valid JSON – fall through
+        // Inspect output was not valid JSON - fall through
     }
     return result;
 };

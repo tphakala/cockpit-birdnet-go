@@ -39,7 +39,18 @@ describe('PortCard', () => {
                 onChanged={() => {}}
             />
         );
-        expect(await screen.findByText(/compose/i)).toBeTruthy();
+        expect(await screen.findByText(/This Docker Compose deployment needs a manual port change/i)).toBeTruthy();
+    });
+
+    it('shows a guided-manual notice for podman compose deployments', async () => {
+        render(
+            <PortCard
+                deployment={dep({ kind: 'docker-compose', runtime: 'podman', composeWorkingDir: '/srv/bng' })}
+                hostname="localhost"
+                onChanged={() => {}}
+            />
+        );
+        expect(await screen.findByText(/This Podman Compose deployment needs a manual port change/i)).toBeTruthy();
     });
 
     it('disables apply when the deployment cannot change its port', async () => {

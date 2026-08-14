@@ -107,7 +107,9 @@ export const PortCard: React.FC<PortCardProps> = ({ deployment, hostname, onChan
                         isPlain
                         title={
                             deployment.kind === 'docker-compose'
-                                ? _('This Docker Compose deployment needs a manual port change')
+                                ? deployment.runtime === 'podman'
+                                    ? _('This Podman Compose deployment needs a manual port change')
+                                    : _('This Docker Compose deployment needs a manual port change')
                                 : _('This deployment needs a manual port change')
                         }
                         className="pf-v6-u-mb-md"

@@ -47,11 +47,11 @@ import {
     GITHUB_RELEASES_PAGE_URL,
     SERVICE_NAME,
 } from './config';
-import type { ContainerStatus, DockerStatus, HealthStatus, LogEntry, SystemdStatus, VersionInfo } from './types';
+import type { ContainerStatus, HealthStatus, LogEntry, RuntimeStatus, SystemdStatus, VersionInfo } from './types';
 import { detectDeployment } from './deployment/detect';
 import { getDriver } from './deployment/driver';
 import { recreateContainer } from './deployment/recreate';
-import { runtimeBin } from './deployment/runtime';
+import { runtimeBin, runtimeComposeCommand, runtimeComposeLabel, runtimeLabel } from './deployment/runtime';
 import type { Deployment } from './deployment/types';
 import { PortCard } from './components/PortCard';
 import {
@@ -60,8 +60,8 @@ import {
     formatLogTime,
     formatUptime,
     getContainerStatusVariant,
-    getDockerStatusVariant,
     getLogLevelColor,
+    getRuntimeStatusVariant,
     isBinaryInstallation,
     isValidLogFile,
     safeJsonParse,
@@ -111,7 +111,7 @@ export const Application = () => {
 
     const driver = getDriver(deployment);
     const isSystemdKind = deployment.kind.endsWith('-systemd');
-    const dockerStatus: DockerStatus = {
+    const runtimeStatus: RuntimeStatus = {
         available: deployment.dockerAvailable,
         running: deployment.dockerRunning,
         ...(deployment.dockerVersion !== undefined && { version: deployment.dockerVersion }),
@@ -521,32 +521,42 @@ export const Application = () => {
         }
     }, [versionInfo, checkForUpdates]);
 
-    const dockerStatusVariant = () => getDockerStatusVariant(dockerStatus);
+    const runtimeStatusVariant = () => getRuntimeStatusVariant(runtimeStatus);
 
     const containerStatusVariant = () => getContainerStatusVariant(systemdStatus, containerStatus);
 
-    const getDockerStatusText = () => {
-        if (!dockerStatus.available) return _('Docker not available');
-        if (!dockerStatus.running) return _('Docker service not running');
-        return _('Docker service running');
+    const getRuntimeStatusText = () => {
+        const isPodman = deployment.runtime === 'podman';
+        if (!runtimeStatus.available) return isPodman ? _('Podman not available') : _('Docker not available');
+        if (!runtimeStatus.running) return isPodman ? _('Podman service not running') : _('Docker service not running');
+        return isPodman ? _('Podman service running') : _('Docker service running');
     };
 
     const getContainerStatusText = () => {
+        const isPodman = deployment.runtime === 'podman';
         // Check systemd first
         if (systemdStatus.exists) {
-            const serviceType = containerStatus.exists ? '(Docker systemd)' : '(binary systemd)';
+            const serviceType = containerStatus.exists
+                ? isPodman
+                    ? '(Podman systemd)'
+                    : '(Docker systemd)'
+                : '(binary systemd)';
             if (systemdStatus.running) return _(`BirdNET-Go service running ${serviceType}`);
             return _(`BirdNET-Go service stopped ${serviceType}`);
         }
 
-        // Then check Docker Compose
+        // Then check Compose
         if (containerStatus.isCompose) {
-            if (containerStatus.running) return _('BirdNET-Go running (Docker Compose)');
-            return _('BirdNET-Go stopped (Docker Compose)');
+            if (containerStatus.running) {
+                return isPodman ? _('BirdNET-Go running (Podman Compose)') : _('BirdNET-Go running (Docker Compose)');
+            }
+            return isPodman ? _('BirdNET-Go stopped (Podman Compose)') : _('BirdNET-Go stopped (Docker Compose)');
         }
 
-        // Then check standalone Docker
-        if (!containerStatus.imagePresent) return _('BirdNET-Go Docker image not found');
+        // Then check standalone container
+        if (!containerStatus.imagePresent) {
+            return isPodman ? _('BirdNET-Go Podman image not found') : _('BirdNET-Go Docker image not found');
+        }
         if (!containerStatus.exists) return _('No BirdNET-Go container found');
         if (!containerStatus.running) return _('BirdNET-Go container stopped');
         return _('BirdNET-Go container running');
@@ -629,12 +639,12 @@ export const Application = () => {
 
         try {
             // Check that a container runtime is available first
-            if (!dockerStatus.available) {
+            if (!runtimeStatus.available) {
                 alert('No container runtime is available. Please install Docker or Podman to upgrade BirdNET-Go.');
                 return;
             }
 
-            if (!dockerStatus.running) {
+            if (!runtimeStatus.running) {
                 alert('The container runtime is not running. Please start Docker or Podman first.');
                 return;
             }
@@ -702,12 +712,12 @@ export const Application = () => {
                                 {containerStatus.isCompose && (
                                     <Alert
                                         variant="warning"
-                                        title="Docker Compose deployment detected"
+                                        title={`${runtimeComposeLabel(deployment.runtime)} deployment detected`}
                                         isInline
                                         className="pf-v6-u-mb-md"
                                     >
-                                        This container is managed by Docker Compose. For best results, use
-                                        docker-compose commands in the{' '}
+                                        This container is managed by {runtimeComposeLabel(deployment.runtime)}. For best
+                                        results, use {runtimeComposeCommand(deployment.runtime)} commands in the{' '}
                                         {containerStatus.composeWorkingDir || 'compose project'} directory. Basic
                                         controls below may work but compose-specific operations should be done via CLI.
                                     </Alert>
@@ -752,7 +762,7 @@ export const Application = () => {
                                         </FlexItem>
                                     )}
 
-                                    {/* Docker controls - only show if no systemd */}
+                                    {/* Container controls - only show if no systemd */}
                                     {!systemdStatus.exists && (
                                         <>
                                             <FlexItem>
@@ -760,7 +770,7 @@ export const Application = () => {
                                                     <Button
                                                         variant="primary"
                                                         onClick={onStart}
-                                                        isDisabled={!dockerStatus.running}
+                                                        isDisabled={!runtimeStatus.running}
                                                     >
                                                         Start Container
                                                     </Button>
@@ -774,7 +784,7 @@ export const Application = () => {
                                                     <Button
                                                         variant="secondary"
                                                         onClick={onRestart}
-                                                        isDisabled={!dockerStatus.running || restarting}
+                                                        isDisabled={!runtimeStatus.running || restarting}
                                                         isLoading={restarting}
                                                         style={{ marginLeft: '0.5rem' }}
                                                     >
@@ -787,16 +797,16 @@ export const Application = () => {
                                                     <Button
                                                         variant="primary"
                                                         onClick={createContainer}
-                                                        isDisabled={!dockerStatus.running}
+                                                        isDisabled={!runtimeStatus.running}
                                                     >
                                                         Create Container
                                                     </Button>
                                                 )}
-                                                {!containerStatus.imagePresent && dockerStatus.available && (
+                                                {!containerStatus.imagePresent && runtimeStatus.available && (
                                                     <Button
                                                         variant="primary"
                                                         onClick={pullImage}
-                                                        isDisabled={!dockerStatus.running}
+                                                        isDisabled={!runtimeStatus.running}
                                                     >
                                                         Pull BirdNET-Go Image
                                                     </Button>
@@ -836,7 +846,7 @@ export const Application = () => {
                                                 <p style={{ marginBottom: '0.5rem' }}>
                                                     <strong>Type:</strong>{' '}
                                                     {containerStatus.exists
-                                                        ? 'Docker (systemd managed)'
+                                                        ? `${runtimeLabel(deployment.runtime)} (systemd managed)`
                                                         : 'Binary (systemd managed)'}
                                                 </p>
                                                 <p style={{ marginBottom: '0.5rem' }}>
@@ -853,7 +863,7 @@ export const Application = () => {
                                         )}
                                         {!systemdStatus.exists && containerStatus.isCompose && (
                                             <p style={{ marginBottom: '0.5rem' }}>
-                                                <strong>Type:</strong> Docker Compose
+                                                <strong>Type:</strong> {runtimeComposeLabel(deployment.runtime)}
                                             </p>
                                         )}
                                         {!systemdStatus.exists && containerStatus.composeProject && (
@@ -1099,7 +1109,7 @@ export const Application = () => {
                                                     <Button
                                                         variant="primary"
                                                         onClick={upgradeBirdNetGo}
-                                                        isDisabled={upgrading || !dockerStatus.running}
+                                                        isDisabled={upgrading || !runtimeStatus.running}
                                                         isLoading={upgrading}
                                                     >
                                                         {upgrading
@@ -1113,7 +1123,7 @@ export const Application = () => {
                                                     <Button
                                                         variant="primary"
                                                         onClick={upgradeBirdNetGo}
-                                                        isDisabled={upgrading || !dockerStatus.running}
+                                                        isDisabled={upgrading || !runtimeStatus.running}
                                                         isLoading={upgrading}
                                                     >
                                                         {upgrading ? 'Upgrading...' : 'Upgrade to Latest Stable'}
@@ -1129,23 +1139,25 @@ export const Application = () => {
                                                     isPlain
                                                     className="pf-v6-u-mt-md"
                                                 >
-                                                    Automatic upgrades are only available for standalone Docker
-                                                    installations. Please download and install the new binary manually
-                                                    from the GitHub releases page.
+                                                    Automatic upgrades are only available for standalone{' '}
+                                                    {runtimeLabel(deployment.runtime)} installations. Please download
+                                                    and install the new binary manually from the GitHub releases page.
                                                 </Alert>
                                             )}
                                         {containerStatus.isCompose && versionInfo.updateAvailable && (
                                             <Alert
                                                 variant="info"
-                                                title="Manual update required for Docker Compose deployments"
+                                                title={`Manual update required for ${runtimeComposeLabel(deployment.runtime)} deployments`}
                                                 isInline
                                                 isPlain
                                                 className="pf-v6-u-mt-md"
                                             >
-                                                Docker Compose deployments must be updated manually. Navigate to{' '}
+                                                {runtimeComposeLabel(deployment.runtime)} deployments must be updated
+                                                manually. Navigate to{' '}
                                                 {containerStatus.composeWorkingDir || 'your compose directory'} and run:
                                                 <code style={{ display: 'block', marginTop: '0.5rem' }}>
-                                                    docker-compose pull && docker-compose up -d
+                                                    {runtimeComposeCommand(deployment.runtime)} pull &&{' '}
+                                                    {runtimeComposeCommand(deployment.runtime)} up -d
                                                 </code>
                                             </Alert>
                                         )}
@@ -1190,12 +1202,12 @@ export const Application = () => {
 
                     <GridItem span={12}>
                         <Card>
-                            <CardTitle>Docker Status</CardTitle>
+                            <CardTitle>{`${runtimeLabel(deployment.runtime)} Status`}</CardTitle>
                             <CardBody>
-                                <Alert variant={dockerStatusVariant()} title={getDockerStatusText()} />
-                                {dockerStatus.version && (
+                                <Alert variant={runtimeStatusVariant()} title={getRuntimeStatusText()} />
+                                {runtimeStatus.version && (
                                     <p>
-                                        <strong>Version:</strong> {dockerStatus.version}
+                                        <strong>Version:</strong> {runtimeStatus.version}
                                     </p>
                                 )}
                             </CardBody>
@@ -1205,7 +1217,7 @@ export const Application = () => {
                     {containerStatus.exists && (
                         <GridItem span={12}>
                             <Card>
-                                <CardTitle>Docker Container Logs</CardTitle>
+                                <CardTitle>{`${runtimeLabel(deployment.runtime)} Container Logs`}</CardTitle>
                                 <CardBody>
                                     {containerLogs ? (
                                         <pre

@@ -25,11 +25,13 @@ export interface LogEntry {
     [key: string]: unknown;
 }
 
-export interface DockerStatus {
+export interface RuntimeStatus {
     available: boolean;
     running: boolean;
     version?: string;
 }
+
+export type DockerStatus = RuntimeStatus;
 
 export interface ContainerStatus {
     exists: boolean;
