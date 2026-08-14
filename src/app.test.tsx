@@ -99,7 +99,7 @@ describe('<Application />', () => {
         expect(await screen.findByText(/BirdNET-Go running \(Podman Compose\)/)).toBeDefined();
     });
 
-    it('renders systemd service status correctly for Podman systemd', async () => {
+    it('renders systemd service status correctly for Podman systemd (running and stopped)', async () => {
         vi.mocked(detectDeployment).mockResolvedValue(
             mockDeployment({
                 kind: 'docker-systemd',
@@ -111,12 +111,26 @@ describe('<Application />', () => {
                 dockerRunning: true,
             })
         );
-        render(<Application />);
-
+        const { unmount } = render(<Application />);
         expect(await screen.findByText('BirdNET-Go service running (Podman systemd)')).toBeDefined();
+        unmount();
+
+        vi.mocked(detectDeployment).mockResolvedValue(
+            mockDeployment({
+                kind: 'docker-systemd',
+                runtime: 'podman',
+                running: false,
+                imagePresent: true,
+                containerId: 'podman-sys-123',
+                dockerAvailable: true,
+                dockerRunning: true,
+            })
+        );
+        render(<Application />);
+        expect(await screen.findByText('BirdNET-Go service stopped (Podman systemd)')).toBeDefined();
     });
 
-    it('renders systemd service status correctly for Docker systemd', async () => {
+    it('renders systemd service status correctly for Docker systemd (running and stopped)', async () => {
         vi.mocked(detectDeployment).mockResolvedValue(
             mockDeployment({
                 kind: 'docker-systemd',
@@ -128,12 +142,26 @@ describe('<Application />', () => {
                 dockerRunning: true,
             })
         );
-        render(<Application />);
-
+        const { unmount } = render(<Application />);
         expect(await screen.findByText('BirdNET-Go service running (Docker systemd)')).toBeDefined();
+        unmount();
+
+        vi.mocked(detectDeployment).mockResolvedValue(
+            mockDeployment({
+                kind: 'docker-systemd',
+                runtime: 'docker',
+                running: false,
+                imagePresent: true,
+                containerId: 'docker-sys-123',
+                dockerAvailable: true,
+                dockerRunning: true,
+            })
+        );
+        render(<Application />);
+        expect(await screen.findByText('BirdNET-Go service stopped (Docker systemd)')).toBeDefined();
     });
 
-    it('renders systemd service status correctly for binary systemd', async () => {
+    it('renders systemd service status correctly for binary systemd (running and stopped)', async () => {
         vi.mocked(detectDeployment).mockResolvedValue(
             mockDeployment({
                 kind: 'native-systemd',
@@ -144,8 +172,21 @@ describe('<Application />', () => {
                 dockerRunning: false,
             })
         );
-        render(<Application />);
-
+        const { unmount } = render(<Application />);
         expect(await screen.findByText('BirdNET-Go service running (binary systemd)')).toBeDefined();
+        unmount();
+
+        vi.mocked(detectDeployment).mockResolvedValue(
+            mockDeployment({
+                kind: 'native-systemd',
+                runtime: null,
+                running: false,
+                imagePresent: false,
+                dockerAvailable: false,
+                dockerRunning: false,
+            })
+        );
+        render(<Application />);
+        expect(await screen.findByText('BirdNET-Go service stopped (binary systemd)')).toBeDefined();
     });
 });
