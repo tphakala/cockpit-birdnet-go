@@ -25,3 +25,24 @@ import type { ContainerRuntime } from './types';
  */
 export const runtimeBin = (runtime: ContainerRuntime): 'docker' | 'podman' =>
     runtime === 'podman' ? 'podman' : 'docker';
+
+/**
+ * Return a human-readable display label for the container runtime.
+ * Defaults to 'Docker' when no runtime is detected (null).
+ */
+export const runtimeLabel = (runtime: ContainerRuntime): 'Docker' | 'Podman' =>
+    runtime === 'podman' ? 'Podman' : 'Docker';
+
+/**
+ * Return a human-readable display label for the compose deployment.
+ * Defaults to 'Docker Compose' when no runtime is detected (null).
+ */
+export const runtimeComposeLabel = (runtime: ContainerRuntime): string =>
+    runtime === 'podman' ? 'Podman Compose' : 'Docker Compose';
+
+/**
+ * Return the recommended compose command invocation for the runtime.
+ * Defaults to 'docker-compose' when no runtime is detected (null).
+ */
+export const runtimeComposeCommand = (runtime: ContainerRuntime): string =>
+    runtime === 'podman' ? 'podman compose' : 'docker-compose';

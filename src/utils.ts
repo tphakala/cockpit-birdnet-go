@@ -17,7 +17,7 @@
  * along with Cockpit; If not, see <http://www.gnu.org/licenses/>.
  */
 
-import type { ContainerStatus, DockerStatus, LogEntry, SystemdStatus } from './types';
+import type { ContainerStatus, LogEntry, RuntimeStatus, SystemdStatus } from './types';
 
 /**
  * Safely parse a JSON string, returning a fallback value if parsing fails.
@@ -121,11 +121,13 @@ export const supportsAutomaticUpgrade = (systemdStatus: SystemdStatus, container
     return containerStatus.exists && !containerStatus.isCompose;
 };
 
-export const getDockerStatusVariant = (dockerStatus: DockerStatus): 'danger' | 'warning' | 'success' => {
-    if (!dockerStatus.available) return 'danger';
-    if (!dockerStatus.running) return 'warning';
+export const getRuntimeStatusVariant = (runtimeStatus: RuntimeStatus): 'danger' | 'warning' | 'success' => {
+    if (!runtimeStatus.available) return 'danger';
+    if (!runtimeStatus.running) return 'warning';
     return 'success';
 };
+
+export const getDockerStatusVariant = getRuntimeStatusVariant;
 
 export const getContainerStatusVariant = (
     systemdStatus: SystemdStatus,
